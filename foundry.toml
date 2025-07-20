@@ -1,0 +1,36 @@
+# foundry.toml配置的内容等效.env配置的内容，通常.env文件中配置敏感内容。 优先级规则​,当配置冲突时，Foundry 按以下顺序生效：命令行参数 > .env 环境变量 > foundry.toml​
+
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+
+# solc-version = "0.8.29"   # 编译器版本选择
+# optimizer = true
+# 优化器: 运行次数 预期合约在部署后会被调用的次数 最大2^32-1
+# optimizer-runs = 200
+# 使用中间表示
+# via_ir = true
+
+[etherscan.sepolia]
+key = "W17XCQRKR6NUKMHPT977TXYUY6WY9KT8WX"
+
+# 添加本地链配置
+# localhost = "http://localhost:8545"  # 默认本地节点端口
+
+# 这是一个 ​RPC（Remote Procedure Call）端点配置文件，通常用于区块链开发中定义不同网络的节点访问地址。它的作用是让开发者可以方便地切换不同的区块链网络
+# [rpc_endpoints]
+# sepolia = "${SEPOLIA_RPC_URL}"     # Sepolia 测试网的 RPC 地址（通过环境变量注入），也可以在.env文件中设置
+# polygon = "${POLYGON_RPC_URL}"     # Polygon 主网的 RPC 地址,也可以在.env文件中设置
+# mumbai = ""                        # mumbai 主网的 RPC 地址.也可以在.env文件中设置
+# optimism = "${OPTIMISM_RPC_URL}"    # Optimism 网络的 RPC 地址,也可以在.env文件中设置
+
+# foundry.toml 配置文件写权限
+fs_permissions = [
+{ access = "write", path = "./deployments" }
+]
+
+remappings = ["@openzeppelin/=lib/openzeppelin-contracts/"]
+
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

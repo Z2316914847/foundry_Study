@@ -1,11 +1,35 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
+// import "@openzeppelin/contracts/utils/Strings.sol";  // 需要低级的编译器 0.8.2，那我们就用library库/写一个String文件。
+// import "./String.sol";  
+/*
+    ERC721:
+        一个人可以有多个NFT(资产)
+        授权：所有者授权一个或者多个NFT
+        转让：NFT的所有者改变
+    遇到的问题
+        1.参数为string时，必须加memory
+        2.在一个合约内，函数名不可以和事件同名
+        3.mapping查询银锭要对它结构进行检查，因为输入的key，有时候对应的value不存在，倒是这个槽会有默认值
+        4.safeTransferFrom:底层就是一个transfer ＋ 一个跨合约的onERC721Received，跨合约执行对于的方法，转账数据更新
+        5.ERC721 多次 ＋ 单次授权，ERC20多次授权，这便决定了他们的授权的状态变量不一样。
+          721是mapping(uint256=>address)、mapping(address=>mapping(address=>bool))
+          20是mapping(address=>mapping(address=>uint256))
+        error 关键字是在 0.8.4之后引入的
+        interface(address).method:判断address是否实现了interface接口，判断address是否实现了method方法
+        如果多个函数B/C/D都要调用某个函数A，那么B/C/D中共同的逻辑可以写入函数A中(我指的逻辑是例如读取啊，写入啊，判断啊等等)，这样会节省Gas费
+        delete 是一个关键字，用于重置变量或状态变量的值为其默认值
+        要NFT成功必须遵循ERC721标准，不然钱包不能识别出来:10个方法，三个事件要原封不动写出来
+*/
 interface IERC165 {
     // 如果合约实现了函数，返回true
     function supportsInterface(bytes4 interfaceId) external view returns(bool);
 }
 
 interface IERC721 is IERC165 {
+    // event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+    // event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
+    // event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
 
     function balanceOf(address owner) external view returns (uint256 balance);
 
@@ -39,12 +63,14 @@ interface IERC721 is IERC165 {
     function isApprovedForAll(address owner, address operator) external view returns (bool);
 }
 interface IERC721Metadata {
+    // 下面合约未实现
     function name() external view returns (string memory);
 
     function symbol() external view returns (string memory);
 
     function tokenURI(uint256 tokenId) external view returns (string memory);
 }
+// ERC721必须实现这个接口，意义在跨合约，实现安全转账
 interface IERC721Receiver {
     function onERC721Received(
         address operator,
@@ -167,6 +193,8 @@ contract ERC721 is IERC721, IERC721Metadata {
 
     // 授权函数No1，被授权不能在授权NFT，除非授权将所有都授权给被授权者(isApprovedReNew_查询为true的话，就可以额授权)
     // 参数：owner2是被授权人，tokenId是NFT的Id
+    // 用户上架NFT时不自己调用授权，有Market调用授权方法：判断单次授权/永久授权/批量授权中是否有授权记录
+    // 用户上架NFT时自己调用授权：判断永久授权/批量授权中是否有授权记录
     function approve(address owner2, uint256 tokenId ) public override {
         address owner1 = owners_[tokenId];
         require( owners_[tokenId]!=address(0), "tokenId is not exist");
@@ -221,6 +249,8 @@ contract ERC721 is IERC721, IERC721Metadata {
     function _transfer( address owner1, address from, address owner2, uint tokenId ) private {
         require(owner2 != address(0), "transfer to the zero address");
         require(from == owner1, "not owner");
+        // ERC721支持被授权人将NFT转给自己，假如不支持，将会触发require语句，增加gas费
+        // require(to != from, "from not  address");
         owners_[tokenId] = owner2;
         balances_[from] -= 1;  // balances_[from]等价balances_[owner1]
         balances_[owner2] += 1;
@@ -245,6 +275,7 @@ contract ERC721 is IERC721, IERC721Metadata {
         // 转账 + 跨合约方法
         _transfer(owner1, from, owner2, tokenId);
         _checkOnERC721Received(from, owner2, tokenId, _data);
+        // _checkOnERC721Received(owner1, owner2, tokenId, _data);  // 等价
     }
 
     // 跨合约同步方法
@@ -291,13 +322,13 @@ contract ERC721 is IERC721, IERC721Metadata {
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(owners_[tokenId] != address(0), "Token Not Exist");
-        string memory baseURI = _baseURI();
+        string memory baseURI = getBaseURI();
         // return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
         return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, "")) : "";
     }
 
     // 获取固定的baseURI
-    function _baseURI() public view returns (string memory) {
+    function getBaseURI() public view returns (string memory) {
         return baseURI_;
     }
 

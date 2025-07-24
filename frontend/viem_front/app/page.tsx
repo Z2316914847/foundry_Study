@@ -764,8 +764,8 @@ export default function Home() {
 
     const walletClient = createWalletClient({
       chain: sepolia,
-      // transport: custom(window.ethereum),
-      transport: http('https://eth-sepolia.public.blastapi.io')
+      transport: custom(window.ethereum),
+      // transport: http('https://eth-sepolia.public.blastapi.io')
     });
 
     try {

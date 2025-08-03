@@ -2,113 +2,195 @@
 pragma solidity ^0.8.0;
 
 contract Bank {
+    // 存款记录映射
     mapping(address => uint256) public balances;
-    mapping(address => address) public nextUser; // 用更清晰的命名替代 total_top10
-    address constant GUARD = address(1);
-    uint256 public listSize;
-    uint256 public constant MAX_TOP = 3; // 明确排名数量限制  最多4个人上部署者
-
-    constructor() payable {
-        nextUser[GUARD] = GUARD; // 初始化守卫节点指向自己
-        balances[msg.sender] = msg.value;
-        listSize = 1;
+    
+    // 前10名用户链表结构
+    struct Rank {
+        address user;
+        uint256 amount;
+        address next;
     }
+    
+    // 链表头节点
+    address public head;
+    
+    // 用户到链表节点的映射
+    mapping(address => address) public userToNode;
+    
+    // 节点到Rank的映射
+    mapping(address => Rank) public nodes;
+    
+    // 存款事件
+    event Deposited(address indexed user, uint256 amount);
+    // 排名更新事件
+    event RankUpdated(address indexed user, uint256 amount, uint256 rank);
 
+    // 接收以太币存款
     receive() external payable {
         deposit();
     }
-
-    // 修正函数名并优化逻辑
+    
+    // 存款函数
     function deposit() public payable {
-        require(msg.value > 0, "Deposit amount must be positive");
+        require(msg.value > 0, "Deposit amount must be greater than 0");
         
-        // 更新余额
+        // 更新用户余额
         balances[msg.sender] += msg.value;
         
-        // 如果是新用户且列表未满，增加列表大小
-        if (nextUser[msg.sender] == address(0) && listSize < MAX_TOP) {
-            listSize++;
+        // 更新排行榜
+        _updateRank(msg.sender, balances[msg.sender]);
+        
+        emit Deposited(msg.sender, msg.value);
+    }
+    
+    // 更新排行榜
+    function _updateRank(address user, uint256 newAmount) private {
+        // 如果用户已经在排行榜中
+        if (userToNode[user] != address(0)) {
+            // 先移除现有节点
+            _removeNode(user);
         }
         
-        // 更新排名
-        _updateRank(msg.sender, balances[msg.sender]);
+        // 插入新节点
+        _insertNode(user, newAmount);
+        
+        // 如果链表长度超过10，移除末尾节点
+        if (_getLength() > 10) {
+            _removeLastNode();
+        }
     }
-
-    // 完整的排名更新逻辑
-    function _updateRank(address addr, uint256 amount) private {
-        address current = nextUser[GUARD];
-        address prev = GUARD;
-        uint256 count = 0;
-
-        // 遍历链表找到插入位置
-        while (current != GUARD && count < MAX_TOP) {
-            if (balances[current] < amount) {
+    
+    // 在链表中插入新节点
+    function _insertNode(address user, uint256 amount) private {
+        address newNode = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, user)))));
+        
+        // 如果链表为空
+        if (head == address(0)) {
+            head = newNode;
+            nodes[newNode] = Rank(user, amount, address(0));
+            userToNode[user] = newNode;
+            return;
+        }
+        
+        // 查找插入位置
+        address current = head;
+        address prev = address(0);
+        
+        while (current != address(0)) {
+            if (amount > nodes[current].amount) {
                 break;
             }
             prev = current;
-            current = nextUser[current];
-            count++;
+            current = nodes[current].next;
         }
-
-        // 如果已在链表中，先移除
-        if (nextUser[addr] != address(0)) {
-            _removeFromRank(addr);
+        
+        // 插入新节点
+        if (prev == address(0)) {
+            // 插入到头部
+            nodes[newNode] = Rank(user, amount, head);
+            head = newNode;
+        } else {
+            // 插入到中间
+            nodes[newNode] = Rank(user, amount, current);
+            nodes[prev].next = newNode;
         }
-
-        // 插入到合适位置
-        nextUser[addr] = current;
-        nextUser[prev] = addr;
-
-        // 如果超过最大排名，移除最后一个
-        if (listSize > MAX_TOP) {
-            _removeLastFromRank();
-        }
+        
+        userToNode[user] = newNode;
     }
-
+    
     // 从链表中移除节点
-    function _removeFromRank(address addr) private {
-        address current = nextUser[GUARD];
-        address prev = GUARD;
-
-        while (current != GUARD) {
-            if (current == addr) {
-                nextUser[prev] = nextUser[current];
-                nextUser[current] = address(0);
-                listSize--;
-                return;
-            }
+    function _removeNode(address user) private {
+        address nodeToRemove = userToNode[user];
+        require(nodeToRemove != address(0), "User not in ranking");
+        
+        // 查找前驱节点
+        address current = head;
+        address prev = address(0);
+        
+        while (current != nodeToRemove) {
             prev = current;
-            current = nextUser[current];
+            current = nodes[current].next;
+        }
+        
+        // 移除节点
+        if (prev == address(0)) {
+            // 移除头节点
+            head = nodes[nodeToRemove].next;
+        } else {
+            nodes[prev].next = nodes[nodeToRemove].next;
+        }
+        
+        // 清理映射
+        delete nodes[nodeToRemove];
+        delete userToNode[user];
+    }
+    
+    // 移除链表末尾节点
+    function _removeLastNode() private {
+        address current = head;
+        address prev = address(0);
+        
+        while (nodes[current].next != address(0)) {
+            prev = current;
+            current = nodes[current].next;
+        }
+        
+        if (prev == address(0)) {
+            // 只有一个节点
+            delete nodes[head];
+            delete userToNode[nodes[head].user];
+            head = address(0);
+        } else {
+            // 移除最后一个节点
+            delete nodes[current];
+            delete userToNode[nodes[current].user];
+            nodes[prev].next = address(0);
         }
     }
-
-    // 移除链表最后一个节点
-    function _removeLastFromRank() private {
-        address current = nextUser[GUARD];
-        address prev = GUARD;
-
-        while (nextUser[current] != GUARD) {
-            prev = current;
-            current = nextUser[current];
+    
+    // 获取链表长度
+    function _getLength() private view returns (uint256) {
+        uint256 count = 0;
+        address current = head;
+        
+        while (current != address(0)) {
+            count++;
+            current = nodes[current].next;
         }
-
-        nextUser[prev] = GUARD;
-        nextUser[current] = address(0);
-        listSize--;
+        
+        return count;
     }
-
-    // 获取排名信息
-    function getTopUsers(uint256 n) public view returns (address[] memory) {
-        require(n <= MAX_TOP && n <= listSize, "Invalid number of top users");
+    
+    // 获取前10名用户
+    function getTop10() public view returns (Rank[] memory) {
+        Rank[] memory top10 = new Rank[](_getLength());
+        address current = head;
+        uint256 index = 0;
         
-        address[] memory topUsers = new address[](n);
-        address current = nextUser[GUARD];
-        
-        for (uint256 i = 0; i < n && current != GUARD; i++) {
-            topUsers[i] = current;
-            current = nextUser[current];
+        while (current != address(0)) {
+            top10[index] = nodes[current];
+            current = nodes[current].next;
+            index++;
         }
         
-        return topUsers;
+        return top10;
+    }
+    
+    // 获取用户排名
+    function getUserRank(address user) public view returns (uint256) {
+        if (userToNode[user] == address(0)) {
+            return 0; // 不在排行榜中
+        }
+        
+        uint256 rank = 1;
+        address current = head;
+        
+        while (current != userToNode[user]) {
+            rank++;
+            current = nodes[current].next;
+        }
+        
+        return rank;
     }
 }

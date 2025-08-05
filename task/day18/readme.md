@@ -20,13 +20,13 @@
   1.参数：
     1.参数是引用数据类型时(数组，结构体，string)，必须指定存储位置(storage, memory, calldata)，否则会报错。
     2.memory和calldata的区别：只读不修改相数据用calldata(更省gas)，可修改数据用memory。
-    3.参数修饰为calldata时，在函数内部必须强制转为memory，因为返回值必须从memory这周读取，否则会报错。
+    3.参数A被修饰为calldata时，如果返回值中有参数A，在函数内部参数A必须强制转为memory，因为返回值必须从memory这里读取，否则会报错。
   2.返回值：
     1.返回的动态数组（如 bytes[]）必须声明为 memory
     2.返回值总是会在内存中重新构造，不能直接返回 storage 或 calldata
   3.低级调用返回值：(bool, bytes memory)
   4.白名单必须有一个用户，因为空树（0个叶子节点）无法生成有效的 Merkle Root 和 Proof
-  5.为什么一个请求要用delegatecall触发两个方法？
+  5.为什么一个请求要用delegatecall触发两个方法？：假设user调用Bank合约的multicall方法，并且使用call：当完成第一次请求调用后，当前会话msg.sender结束，当执行第二次方法时，msg.sender就会改变为bank这个合约地址。使用delegatecall的话，当第一次请求结束后，msg.sender不会改变，仍然是user，所以第二次请求还是一user的地址请求
   6.NFTMarket.permitPrePay.selector 等效bytes4(keccak256("permitPrePay(uint256,uint256,uint8,uint32,uint32)"))
 
 思路：

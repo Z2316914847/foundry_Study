@@ -8,7 +8,8 @@
   3. anvil不支持EIP7702交易：EIP-7702 authorization lists are not supported before the Prague hardfork
   4.RPC限制速率：fork sepolia到anvil上：anvil --fork-url https://eth-sepolia.public.blastapi.io
     但是还是报错:details: 'EIP-7702 authorization lists are not supported before the Prague hardfork'
-  5.终于解决了：
+  5.address.call{value:value}(AAA):AAA是bytes数据类型
+  6.终于解决了：
     问题所在：
       const executeHash = await walletClient.writeContract({
             account: eoa, 
@@ -22,8 +23,9 @@
       const executeHash = await walletClient.writeContract({
             account: eoa, 
             abi: DELAGATE_ABI,
-            address:eoa.address,  // 问题所在  我们应该访问账户的智能合约地址
+            address:eoa.address,  // 设置为账户的智能合约地址
             functionName: 'execute',
             args: [calls],
             authorizationList: [authorization],
       });
+  

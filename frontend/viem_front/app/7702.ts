@@ -703,7 +703,7 @@ const DELAGATE_ABI = [
     }
 ];
 
-const PRICATE_KET = "0x3ebe1ead3e8e79cd667f704f1979dd03049d1a562c030a350dfa3fd67ef822d5";
+const PRICATE_KET = "0xxx";
 const eoa = privateKeyToAccount(PRICATE_KET as `0x${string}`);
 // const DEPOSIT_AMOUNT = 1000000000000000000n; // 1 token  这个需要模块支持：ES2020，没有安装所以用下面的方法
 const DEPOSIT_AMOUNT = BigInt("1000000000000000000"); // 注意这里是字符串
@@ -760,7 +760,7 @@ async function main() {
         // 检查账户状态
         await checkAccountStatus(eoa.address, publicClient);
 
-        // 2.构造交易数据
+        // 2.构造交易数据  encodeFunctionData 设置编码  也就是将方法和参数编码成字节码
         const approveCalldata = encodeFunctionData({
             abi: TOKEN_ABI,
             functionName: 'approve',

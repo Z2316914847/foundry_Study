@@ -44,7 +44,7 @@ contract memeToken is ERC20 {
         // 检查铸造是否为工厂
         require(msg.sender == factory, "Only factory can mint"); 
 
-        // 收益分配: 1%给项目方, 99%给创建者
+        // 收益分配: 1%给项目方, 90%给创建者
         uint256 factoryFee = (msg.value * 10) / 100;
         uint256 creatorFee = msg.value - factoryFee; 
         (bool creatorSuceess, ) = creator.call{value: creatorFee}("");

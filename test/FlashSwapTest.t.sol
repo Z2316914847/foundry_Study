@@ -53,6 +53,7 @@ contract FlashSwapTest is Test {
         
     }
 
+    // 期望获得 weth
     function test_FlashSwap() public {
 
         // router02 创建池子
@@ -99,6 +100,57 @@ contract FlashSwapTest is Test {
         flashSwap.flashSwap(
             UniswapV2Library.pairFor(address(factory), address(token), address(weth)), 
             address(token), 
+            amountRequired
+        );
+    }
+
+    // 期望获得 token
+    function test_FlashSwap2() public {
+
+        // router02 创建池子
+        vm.startPrank(user1);
+        token.approve(address(router02), type(uint256).max);
+        weth.approve(address(router02), type(uint256).max);
+        router02.addLiquidityETH{value: 10 ether}(
+            address(token),
+            10 * 10**18,  // 期望token
+            9.5 * 10**18,   // 最低 token
+            9.5 ether,  // 最低 ETH
+            user1,
+            block.timestamp + 1 hours
+        );
+        vm.stopPrank();
+
+        // router022 创建池子
+        vm.startPrank(user2);
+        token.approve(address(router022), type(uint256).max);
+        weth.approve(address(router022), type(uint256).max);
+        router022.addLiquidityETH{value: 5 ether}(
+            address(token),
+            10 * 10**18,  // 期望token
+            9.5 * 10**18,   // 最低 token
+            2 ether,  // 最低 ETH
+            user2,
+            block.timestamp + 1 hours
+        );
+        vm.stopPrank();
+
+        // 创建flashSwap(factory2,router022)合约
+        FlashSwap flashSwap = new FlashSwap(
+            UniswapV2Library.pairFor(address(factory2), address(token), address(weth)), 
+            address(factory2), 
+            address(router022)
+        );
+
+        address[] memory path = new address[](2);
+        path[0] = address(weth);
+        path[1] = address(token);
+        uint amountRequired;
+        amountRequired = UniswapV2Library.getAmountsIn(address(factory), 1 * 10**18, path)[0];  // 欠pair多少个token
+        // flashSwap - 借出WETH而不是Token
+        flashSwap.flashSwap(
+            UniswapV2Library.pairFor(address(factory), address(token), address(weth)), 
+            address(weth), 
             amountRequired
         );
     }

@@ -24,19 +24,16 @@ contract FlashSwap is IUniswapV2Callee {
         owner = msg.sender;
     }
 
-
-    // pair1  1 A = 2 B,  pair2 1.5 A  = 2 B  
-    // 从 pair1 借出来 2 个 B, 在pair2兑换 1.5A， 还回 1 个 A 给 pair1
     // 用户主动调用该函数，去pair池子贷款
-    // 参数：pair: pair1合约地址，borrowToken: 借出的代币地址，borrowAmount: 借出的代币数量, 斌没有说借出的代币地址一定要为borrowToken
+    // 参数：pair: 贷款池子合约地址，borrowToken: 贷款池子代币地址，borrowAmount: 借出的代币数量, 并没有说借出的代币地址一定要为borrowToken
     function flashSwap(address pair, address borrowToken, uint256 borrowAmount) external {
         address token0 = IUniswapV2Pair(pair).token0();  // token0=weth, token1=token
         bytes memory data = abi.encode(borrowToken, borrowAmount);
 
         if(token0 == borrowToken) {
-            IUniswapV2Pair(pair).swap(1e18, 0, address(this), data);
+            IUniswapV2Pair(pair).swap(1e18, 0, address(this), data);   // 你期望获得weth
         } else {
-            IUniswapV2Pair(pair).swap(0, 1e18, address(this), data);
+            IUniswapV2Pair(pair).swap(0, 1e18, address(this), data);  // 你期望获得token
         }
     }
 
@@ -53,30 +50,26 @@ contract FlashSwap is IUniswapV2Callee {
         // 闪电贷，只有其中一方有余额(2e18)，另一方没有余额
         uint balance0 = IERC20(token0).balanceOf(address(this)); 
         uint balance1 = IERC20(token1).balanceOf(address(this));
+        console.log("balance0", balance0);
+        console.log("balance1", balance1);
+        console.log("borrowAmount", borrowAmount);
 
         address[] memory path = new address[](2);
         uint amountRequired ;   // 从2池兑换这些代币，需要多少另一个代币数量
         // 收到了 token0,  兑换为 token1
         if (balance0 > 0) {
-
-            path[0] = token1;
-            path[1] = token0;
-            amountRequired = UniswapV2Library.getAmountsIn(factory, balance0, path)[0];
-            
-            IERC20(token0).approve(router2, type(uint256).max);  // 为什么不设置为balance0？
-
             path[0] = token0;
             path[1] = token1;
+            IERC20(token0).approve(router2, type(uint256).max);
             uint[] memory amounts = IUniswapV2Router02(router2).swapExactTokensForTokens(balance0, 0, path, address(this), block.timestamp);
             uint amountReceived = amounts[1];  //实际从池子获得的代币数量
-            
-            console.log("amountRequired", amountRequired);
             console.log("amountReceived", amountReceived);
-            require(amountReceived > amountRequired, "un profitable 1");  // 如果实际获得的代币数量大于期望的代币数量，则交易成功，说明由套利机会
 
-            assert(IERC20(token1).transfer(msg.sender, amountRequired));   // 将借贷的币还给池子
+            require(amountReceived > borrowAmount, "un profitable 1");  // 如果实际获得的代币数量大于期望的代币数量，则交易成功，说明由套利机会
+            assert(IERC20(token1).transfer(msg.sender, borrowAmount));   // 将借贷的币还给池子
+            IERC20(token1).transfer(owner, amountReceived - borrowAmount);   // 将套利获得的代币转给owner
 
-            IERC20(token1).transfer(owner, amountReceived - amountRequired);   // 将套利获得的代币转给owner
+            console.log("owner balance", IERC20(token0).balanceOf(owner));
         }
 
         // 收到了 token1, 兑换为 token0
@@ -89,8 +82,8 @@ contract FlashSwap is IUniswapV2Callee {
 
             require(amountReceived > borrowAmount, "unprofitable");
             require(IERC20(token0).transfer(msg.sender, borrowAmount)); 
+            IERC20(token0).transfer(owner, amountReceived - borrowAmount); 
 
-            IERC20(token0).transfer(owner, amountReceived - borrowAmount); // keep the rest! (tokens)
             console.log("owner balance", IERC20(token0).balanceOf(owner));
         }
 

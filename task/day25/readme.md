@@ -29,6 +29,7 @@
   用户调用闪电贷合约的贷款方法fun1，fun1调用pair合约的swap方法，swap方法中调用闪电贷uniswapV2Call方法(调用这个方法之前，pair合约默认接收到token0，所以闪电贷合约会接受到来自pair合约的token1代币)，进入到uniswapV2Call方法后，闪电贷将得到的token1又去另一个池子2兑换为token0，如果池子2得到的token0>池子贷出来的token0，则说明套利成功，闪电贷合约将token0借出来的token0还给pair合约，将剩余的token0发给用户。
 
 
+
 问题
 1.pair合约中的回调逻辑必须在这个前面，不让pair会说没有收到用户的token0(因为用户用token0购买的token1，所以需要先把token0转给pair合约).
   // 用于回调合约来实现一些特定的业务逻辑或其他自定义功能(闪电贷....)，回调函数必须在查询balance0和balance1之前调用。
@@ -36,4 +37,7 @@
   // 合约拥有两种token的数量， 转移token0/token1后，池子中有两个代币的数量
   balance0 = IERC20(_token0).balanceOf(address(this));
   balance1 = IERC20(_token1).balanceOf(address(this));
-2.传递数据：用abi.encodePacked()
+2.搞混pair合约中swap参数理解，搞混
+  getAmountsOut（代表用固定的代币，能换多少另一个代币）：用2个tokena，可以换6个tokenb。而这个函数就是返回 6个tokenb的数量
+  getAmountsIn(代表你要获得这个数量的代币，需要另一个代表的数量)的用法：你要获得1tokena，就要用3个tokenb。这个函数返回的就是 3个 tokenb 的数量。
+传递数据：用abi.encodePacked()

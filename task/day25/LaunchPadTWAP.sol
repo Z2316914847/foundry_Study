@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "../day24/interfaces/IUniswapV2Pair.sol";
 // import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AggregatorV3Interface} from "../../lib/chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+
 
 /**
  * @title LaunchPadTWAP
@@ -14,6 +16,10 @@ contract LaunchPadTWAP {
     // 存储价格累积值和时间戳的映射
     // pair => (price0CumulativeLast, price1CumulativeLast, blockTimestampLast)
     mapping(address => PriceObservation) public priceObservations;
+
+    // 采用chainlink预言机获取 交易对 的价格，预言机将价格放到这个合约AggregatorV3Interface。
+    AggregatorV3Interface internal dataFeed;
+
     
     // 价格观察结构体
     struct PriceObservation {
@@ -40,6 +46,13 @@ contract LaunchPadTWAP {
         uint256 twapPrice1,
         uint32 timeElapsed
     );
+
+    // BTC/USD 预言机地址
+    constructor() {
+        dataFeed = AggregatorV3Interface(
+            0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43
+        );
+    }
     
     /**
      * @dev 更新价格观察数据
@@ -115,6 +128,19 @@ contract LaunchPadTWAP {
             twapPrice1,
             timeElapsed
         );
+    }
+
+    // 预言机获取BTC/USDT交易对的TWAP价格
+    function getChainlinkDataFeedLatestAnswer() public returns (int) {
+        // prettier-ignore
+        (
+            /* uint80 roundId */,
+            int256 answer,
+            /*uint256 startedAt*/,
+            /*uint256 updatedAt*/,
+            /*uint80 answeredInRound*/
+        ) = dataFeed.latestRoundData();
+        return answer;
     }
     
     /**

@@ -140,10 +140,10 @@ contract MultiSigWallet {
         emit RevokeConfirmation(msg.sender, _txIndex);
     }
 
-    // // 获取所有者列表
-    // function getOwners() public view returns (address[] memory) {
-    //     return owners;
-    // }
+    // 获取所有者列表
+    function getOwners() public view returns (address[] memory) {
+        return owners;
+    }
 
     // // 获取交易总数
     // function getTransactionCount() public view returns (uint) {

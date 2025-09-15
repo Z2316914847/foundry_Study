@@ -11,6 +11,7 @@ const rl = readline.createInterface({
   output: process.stdout
 })
 
+// 命令行钱包：暂时支持sepolia网络，如果向支持去哦他网络，将sepolia改为其他网络即可
 const publicClient = createPublicClient({
   chain: sepolia,
   transport: http()
@@ -313,10 +314,11 @@ function mainMenu() {
   console.log('\n=== 命令行钱包 ===')
   console.log('1. 生成新私钥')
   console.log('2. 导入私钥')
-  console.log('3. 查询余额')
-  console.log('4. 发送ETH')
-  console.log('5. 发送ERC20代币')
-  console.log('6. 退出')
+  console.log('3. 查询ETH余额')
+  console.log('4. 查询Token余额')
+  console.log('5. 发送ETH')
+  console.log('6. 发送ERC20代币')
+  console.log('7. 退出')
 
   rl.question('请选择操作: ', async (choice) => {
     switch (choice) {
@@ -330,12 +332,15 @@ function mainMenu() {
         await checkBalance()
         break
       case '4':
-        await sendETH()
+        await checkTokenBalance()
         break
       case '5':
-        await sendERC20()
+        await sendETH()
         break
       case '6':
+        await sendERC20()
+        break
+      case '7':
         rl.close()
         process.exit(0)
       default:
@@ -348,14 +353,16 @@ function mainMenu() {
 // 1. 生成新私钥
 async function generatePrivateKey() {
   // privateKeyToAccount：将私钥转为账户对象
-  // const privateKey = generatePrivateKey() // viem提供的随机生成私钥方法、import { generatePrivateKey } from 'viem/accounts'
-  const privateKey = `0x${randomBytes(32).toString('hex')}` as `0x${string}`
+  // const privateKey = generatePrivateKey() // viem提供的随机生成私钥方法，这个方法生产的私钥更随机，安全性更强。import { generatePrivateKey } from 'viem/accounts'
+  let privateKey = `0x${randomBytes(32).toString('hex')}` as `0x${string}`
   account = privateKeyToAccount(privateKey)
   // 获取账户地址
+  // 这个账户是真实存在的，这个账户只在本地存在，如果你想让这个账户在网络上存在（其他节点承认），那么这个账户就必须 收到一笔转账
   walletAddress = account.address
   console.log('\n新账户已生成:')
   console.log('地址:', walletAddress)
   console.log('私钥:', privateKey)
+  privateKey = '' as `0x${string}` // 清空私钥,不让内存泄漏私钥
   console.log('\n请妥善保存私钥！')
   mainMenu()
 }
@@ -365,7 +372,7 @@ async function importPrivateKey() {
   rl.question('请输入私钥: ', (privateKey) => {
     try {
       // 如果私钥没有0x前缀，自动添加
-      const formattedPrivateKey = privateKey.trim().startsWith('0x') 
+      let formattedPrivateKey = privateKey.trim().startsWith('0x') 
         ? privateKey.trim() 
         : `0x${privateKey.trim()}`
       
@@ -373,6 +380,7 @@ async function importPrivateKey() {
       walletAddress = account.address
       console.log('\n账户已导入:')
       console.log('地址:', walletAddress)
+      formattedPrivateKey = '' as `0x${string}` // 清空私钥,不让内存泄漏私钥
     } catch (e) {
       console.log('无效的私钥格式')
     }
@@ -380,7 +388,7 @@ async function importPrivateKey() {
   })
 }
 
-// 3. 查询余额
+// 3. 查询ETH余额
 async function checkBalance() {
   if (!walletAddress) {
     console.log('请先生成或导入账户')
@@ -394,13 +402,41 @@ async function checkBalance() {
     console.log(`\n余额: ${formatEther(balance)} ETH`)
     
     // 这里可以添加ERC20代币余额查询
+
   } catch (e) {
     console.log('查询余额失败:', e)
   }
   mainMenu()
 }
 
-// 4. 发送ETH
+// 4.查询token余额 
+async function checkTokenBalance() {
+  if (!walletAddress) {
+    console.log('请先生成或导入账户')
+    return mainMenu()
+  } 
+  rl.question('请输入代币合约地址: ', async (tokenAddress) => {
+    rl.question('请输入要查询地址: ', async (address) => {
+      try{
+        console.log('\n准备查询Token余额...')
+
+        const tokenBalance = await publicClient.readContract({
+          address: tokenAddress.trim() as `0x${string}`,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [address.trim() as `0x${string}`]
+        }) as bigint;
+      
+        console.log(`\n代币余额: ${tokenBalance} (${formatEther(tokenBalance)})`)
+      }catch(e){
+        console.log('查询代币余额失败:', e)
+      }
+     mainMenu()
+    })
+  })
+}
+
+// 5. 发送ETH
 async function sendETH() {
   if (!account) {
     console.log('请先生成或导入账户')
@@ -412,6 +448,7 @@ async function sendETH() {
       try {
         console.log('\n准备发送交易...')
         
+        // 这里假如用户ETH不足，还是直接发送交易，导致用户浪费gas，这是个问题，可以改进
         const txHash = await walletClient.sendTransaction({
           account,
           to: toAddress.trim() as `0x${string}`,
@@ -428,7 +465,7 @@ async function sendETH() {
   })
 }
 
-// 5. 发送ERC20代币
+// 6. 发送ERC20代币
 async function sendERC20() {
   if (!account) {
     console.log('请先生成或导入账户')
@@ -442,6 +479,7 @@ async function sendERC20() {
           console.log('\n准备发送ERC20交易...')
           
           // simulateContract()：模拟和验证合约的交互
+          // 这里假如用户ETH不足，还是直接发送交易，导致用户浪费gas，这是个问题，可以改进
           const { request } = await publicClient.simulateContract({
             account,
             address: tokenAddress.trim() as `0x${string}`,

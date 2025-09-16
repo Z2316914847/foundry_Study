@@ -10,16 +10,16 @@ contract MultiSigWallet {
     event ExecuteTransaction(address indexed owner, uint indexed txIndex);
     event RevokeConfirmation(address indexed owner, uint indexed txIndex);
 
-    address[] public owners;  // 多签地址
-    uint public threshold;  // 多签批准最少人数
-    mapping(address => bool) public isOwner;  // 判断某地址是否为多签
+    address[] public owners;                   // 多签地址  -  用户获取完整列表和计数   -  用于判断是否达到 提案执行 门槛
+    uint public threshold;                     // 多签批准最少人数
+    mapping(address => bool) public isOwner;   // 判断某地址是否为多签  -   用于快速权限检查   -  每次用户 onlyOwner 时使用 mapping 比 数组 更省 Gas
 
     // 交易结构
     struct Transaction {
-        address to;  // 目标地址
-        uint value;  // 转账金额
-        bytes data;  // 调用数据
-        bool executed;  // 是否执行
+        address to;              // 目标地址
+        uint value;              // 转账金额
+        bytes data;              // 调用数据
+        bool executed;           // 是否执行
         uint confirmationCount;  // 当前确认数
     }
 
@@ -104,7 +104,7 @@ contract MultiSigWallet {
 
     // 确认一个交易提案
     // 参数：_txIndex 交易索引
-    function confirmTransaction( uint _txIndex ) public onlyOwner txExists(_txIndex) notExecuted(_txIndex) notConfirmed(_txIndex) {
+    function confirmTransaction( uint _txIndex ) public onlyOwner notConfirmed(_txIndex) txExists(_txIndex) notExecuted(_txIndex)  {
         // 增加确认数并且将该地址的确认状态设置为 true
         Transaction storage transaction = transactions[_txIndex];
         transaction.confirmationCount += 1;
@@ -115,7 +115,7 @@ contract MultiSigWallet {
 
     // 执行一个已确认的交易
     // 参数：_txIndex 交易索引
-    function executeTransaction( uint _txIndex ) public txExists(_txIndex) notExecuted(_txIndex) {
+    function executeTransaction( uint _txIndex ) public onlyOwner txExists(_txIndex) notExecuted(_txIndex) {
         Transaction storage transaction = transactions[_txIndex];
         require( transaction.confirmationCount >= threshold, "The number of approved people must be greater than the minimum value" );
         transaction.executed = true;
@@ -145,20 +145,26 @@ contract MultiSigWallet {
         return owners;
     }
 
-    // // 获取交易总数
-    // function getTransactionCount() public view returns (uint) {
-    //     return transactions.length;
-    // }
+    // 获取 提案 信息
+    function getTransaction( uint _txIndex ) public view returns ( address to, uint value, bytes memory data, bool executed, uint confirmationCount ) {
+        Transaction storage transaction = transactions[_txIndex];
+        return (
+            transaction.to,
+            transaction.value,
+            transaction.data,
+            transaction.executed,
+            transaction.confirmationCount
+        );
+    }
 
-    // // 获取交易详情
-    // function getTransaction( uint _txIndex ) public view returns ( address to, uint value, bytes memory data, bool executed, uint confirmationCount ) {
-    //     Transaction storage transaction = transactions[_txIndex];
-    //     return (
-    //         transaction.to,
-    //         transaction.value,
-    //         transaction.data,
-    //         transaction.executed,
-    //         transaction.confirmationCount
-    //     );
-    // }
+    // 获取 提案 信息
+    function getTransaction1( uint _txIndex ) public view returns ( Transaction memory ) {
+        require(_txIndex < transactions.length, "Tx does not exist");
+        return transactions[_txIndex];
+    }
+
+    // 获取总提案数
+    function getTransactionCount() public view returns (uint) {
+        return transactions.length;
+    }
 }

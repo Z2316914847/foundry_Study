@@ -102,7 +102,7 @@ contract TokenBank {
         emit  depositMoney( msg.sender, amount );
     }
 
-    // 拓展 permit2授权
+    // ERC20拓展 permit2授权
     // 参数：amount：代币数量，nonce：随机数，deadline：过期时间，v，r，s：签名值
     function depositWithPermit2(uint256 amount, uint256 nonce, uint256 deadline, uint8 v, bytes32 r, bytes32 s) public {
         require(amount > 0, "TokenBank: deposit amount must be greater than zero");

@@ -41,7 +41,7 @@ contract ownerERC20Permit is IERC20Permit{
         totalSupply = 10000*10**18;
         balances[msg.sender] = totalSupply;
 
-        // 初始化域分隔符
+        // 初始化域分隔符  separator
         _DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
@@ -77,7 +77,8 @@ contract ownerERC20Permit is IERC20Permit{
     // 从 from地址向to地址转账(需要授权),转账者的地址其实是授权者地址
     // 这个方法是被授权者调用，把owner1授权者的代币用掉
     function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
-        // 判断地址和value输入是否符合要求
+        // 判断地址和value输入是否符合要求，注意这里有一种情况没有判断，假如用户收取余额给Bank后，用户又自己花掉他所有资产，
+        // 这样后来Bank转账给用户时，就会失败，因为用户没有余额了。   balances[_from] >= _value
         require(_from!=address(0), "approve address to the zero address");
         require(_to!=address(0), "receive address to the zero address");
         require(_value>0,"ERC20: approve value less than zero");
@@ -97,7 +98,7 @@ contract ownerERC20Permit is IERC20Permit{
     function approve(address _spender, uint256 _value) public returns (bool) {
         // 授权地址要有效
         require(_spender!=address(0), "ERC20: approve to the zero address");
-        // 授权value额度必须大于0
+        // 授权value额度必须大于0，但是没有检查用户是否有足够的余额
         require(_value>0,"ERC20: approve value less than zero");
         // 授权记录更新
         bool success = approve2(msg.sender, _spender, _value);
@@ -140,6 +141,7 @@ contract ownerERC20Permit is IERC20Permit{
 
         // 前端签名地址等于 owner 地址，说明是owner是签名者本人，否则就是有人伪造签名
         require(signer != address(0) && signer == owner, "ERC20Permit: invalid signature");
+        // 没有检查用户是否有足够的余额，就授权这是一个问题点。
         allowances[owner][spender] = value;
         emit Approval(owner, spender, value);
 

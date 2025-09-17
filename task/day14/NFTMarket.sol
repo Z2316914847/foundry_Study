@@ -41,6 +41,7 @@ contract NFTMarket{
     // 参数：nftContract是NFT合约地址(根据NFT特有地址，调用NFT合约中的方法)， tokenId：NFT唯一标识， price：设置NFT上架价格
     function list(address nftContract, uint256 tokenId, uint256 price) public {
         IERC721 nft = IERC721(nftContract);
+        // 其实获得NFT授权的所有人，也可以上架NFT，但是这里为了简化，只允许NFT所有者可以上架NFT
         require(nft.ownerOf(tokenId) == msg.sender, "Not NFT owner");
         require(price > 0, "Price must be > 0");
         // nft.approve(address(this), tokenId);  //Market上架时自己调用授权方法/用户自己调用，这里推荐用户自己调用授权方法，然后在上架NFT
@@ -67,7 +68,11 @@ contract NFTMarket{
 
         uint256 sellerProceeds = listing.price;
 
-        // 发钱
+        // 发钱：
+        // 注意：有一个问题：假如代币转移成功，但是NFT转移发生失败，那么买家会损失代币。可以将NFT转移放到转移代币前面（
+        //   这里有个问题：假如买家拿到NFT后，不给用户转ETH咋办（实现原理：买家是恶意合约，在接受NFT到后， 恶意合约tokensReceived方法，
+        //   而已合约在tokensReceived中回调Market合约中的取消代币授权，就实现了攻击目的）。 解决方案：Market实现一个重入锁，让攻击者无法取消授权 ）
+        // 因为 ETH 转移是原生操作，不属于合约状态的一部分 ，revert无法回滚。ERC20是合约状态的一部分，revert可以回滚。
         // payable(feeRecipient).transfer(fee);
         payable(listing.seller).transfer(sellerProceeds);
 
@@ -82,6 +87,7 @@ contract NFTMarket{
     }
 
     // 购买NFT（ERC20支付）
+    // 这里有一个参数：token：代币合约地址，说明支持任意token购买NFT，但是我的本意只有特定Token能买NFT
     function buyNFTWith_Token( address nftContract, uint256 tokenId, address token, uint256 amount) public payable {
         Listing storage listing = listings[nftContract][tokenId];
         require(listing.seller != address(0), "tokenId not exist" );
@@ -137,8 +143,6 @@ contract NFTMarket{
         emit Canceled(nftContract, tokenId);
     }
 
-    // 实现ERC20 扩展 Token 所要求的接收者方法 tokensReceived  ，在 tokensReceived 中实现NFT 购买功能(注意扩展的转账需要添加一个额外数据参数)。
-
     // 实现tokensReceived接口，处理通过transferWithCallback接收到的代币
     // function tokensReceived(address from, uint256 amount, bytes calldata data) public returns (bool) {
     //     // 检查调用者是否为支付代币合约
@@ -171,7 +175,7 @@ contract NFTMarket{
     //     return true;
     // }
     
-    // 欠实现bank获取NFT：使用transferWithCallbackAndData购买NFT的辅助函数
+    // 推荐使用 回测方法 购买 NFT
     // function buyNFTWithCallback(uint256 _listingId) public  {
     //     // 检查上架信息是否存在且处于活跃状态
     //     Listing storage listing = listings[_listingId];
@@ -183,7 +187,7 @@ contract NFTMarket{
     //     // 编码listingId作为附加数据
     //     bytes memory data = abi.encode(_listingId);
         
-    //     // 调用transferWithCallbackAndData函数，将代币转给市场合约并附带listingId数据
+    //     // 调用代币中的transferWithCallbackAndData函数，将代币转给市场合约并附带listingId数据
     //     bool success = paymentToken.transferWithCallbackAndData(address(this), listing.price, data);
     //     require(success, "NFTMarket: token transfer with callback failed");
     // }

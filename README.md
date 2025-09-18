@@ -1,7 +1,7 @@
 # 仅供初学者参考：一步一步来存在
  - 有不懂的可以加我QQ：2844847674
 
-## 前期步骤
+## 一：前期步骤
 ### 1.工具准备安装wsl->foundry(开发环境，优先安装foundry，或者安装hardhat/truffle)
 ### 2.构建项目：
     1.forge init 项目名   // 创建项目
@@ -46,7 +46,7 @@
             要设备码：需
                 注意电脑弹窗就会有，你留一下
 
-## 进入项目
+## 二：进入项目
 ### 获取节点和环境：
     1.当前项目下：anvil
 ### 运行测试用例
@@ -101,11 +101,21 @@
     注意：配置完，这个简化命令就可以代替之前繁杂的部署命令了
 
 ### 开源合约代码：待更新
-    1.代码是已字节码形式发送到链上(etherscan)。合约代码发给浏览器，浏览器在根据你的代码编译生产一个字节码，浏览器会根据浏览器字节码和
-        本地字节码对比。字节码一样的话，浏览器就会显示你的合约代码。
-    2.部署时开源合约代码（后面升级代码，浏览器也是不会认得，因为升级的代码的字节码和上一个版本字节码不匹配。
+- 代码是已字节码形式发送到链上(etherscan)。合约代码发给浏览器，浏览器在根据你的代码编译生产一个字节码，浏览器会根据浏览器字节码和本地字节码对比。字节码一样的话，浏览器就会显示你的合约代码。
+- 部署时开源合约代码（后面升级代码，浏览器也是不会认得，因为升级的代码的字节码和上一个版本字节码不匹配。
         所以浏览器不认，所以好多人不愿部署时就开源，大家都想部署后面在开源）
-    3.部署时不开源，后面还是可以开源的
+- 部署时不开源，后面还是可以开源的
+- 开源步骤：
+    - 命令行：forge create src/OpenSourceContract.sol:OpenSourceContract --private-key 11111 --rpc-url 11111 --etherscan-api-key 11111 --verify --broadcast
+    - 输完上面命令，foudry会自动版我们去etherscan上验证，如果验证失败(系统会验证4词)，会提示错误消息。
+    - 输完上面命令，如果你不信为什么验证不通过，你可以手动验证：
+        - 第一步进入该合约，点击contract选项卡
+        - 点击右上角的“verify and publish”按钮。
+        - 我是选择Single File（因为我只要验证一个sol文件）
+        - 选择你合约使用的编译器
+        - 选择你合约开源许可证（就是我们编写合约顶部的那段文字）
+        - 进入下一个页面，将你的合约代码粘贴进去
+        - 点击验证，通过的话，会变绿色（我已验证通过：合约地址：https://sepolia.etherscan.io/address/0xd0a9960641a4565d8d5afeda2e8f8fd50cc7a372#code）
 ### 将一个本地部署合约移交到测试网上
     1.在.env文件中配置：sepolia_rpc_url=https://sepolia.infura.io/v3/0ecc55a11dfe4ef6b50caedf71c07b6b意味着将从
         本地开发链，移动到连接到 ​Sepolia 测试网，所有操作将公开在以太坊测试链上，可被全网节点验证。
@@ -128,26 +138,24 @@
     4.超级简化：在合约文件里的setUp中加载账户
     注意：如果想调用合约中的方法，可以在setUp中直接调用即可
 
-使用部署地址查找合约中的状态变量值：
+## 三：其他问题
+
+### 使用部署地址查找合约中的状态变量值：
     1.查找状态变量token的地址值：cast call 部署合约地址 "token()(address)" --rpc-url http://localhost:8545
 
-拉去github某个文件(不支持文件夹哦)到本地某个文件夹中; curl -o frontend/viem_front 文件的copy permalink地址链接（三个小按钮中）;
+### 拉去github某个文件(不支持文件夹哦)到本地某个文件夹中; curl -o frontend/viem_front 文件的copy permalink地址链接（三个小按钮中）;
 
-运行ts文件：npx ts-node NFTMarketEvent.ts
+### 运行ts文件：npx ts-node NFTMarketEvent.ts
 
-使用 Cast CLI 直接调用智能合约方法
+### 使用 Cast CLI 直接调用智能合约方法
     cast send 部署合约的地址 "方法名(参数1，参数2)" 参数值1 参数值2
         --rpc-url $SEPOLIA_RPC \
         --private-key $PRIVATE_KEY
-购买NFT
+### 购买NFT
 cast send 0xMarketAddress "buyNFT(address,uint256)" 0xNFTAddress 1 \
   --value 0.1ether \
   --rpc-url $SEPOLIA_RPC \
   --private-key $PRIVATE_KEY
-
-用第一个私钥账户A部署合约nft和制造一个nft
-部署market合约属于A账户，上架
-   合约NFT地址：0x5FbDB2315678afecb367f032d93F642f64180aa3
 
 
 

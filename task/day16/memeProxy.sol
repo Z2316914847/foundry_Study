@@ -28,6 +28,8 @@ contract memeProxy {
     // 部署 meme 合约  
     function deployMeme( string memory symbol, uint256 maxSupply, uint256 perMint, uint256 totalPrice) public returns (address tokenAddr){
         // 使用最小代理克隆实现合约,不会执行构造函数。
+        // 为什么meme合约没有clone方法，为什么可以调用。因为使用了 using Clones for address;，所以可以meme.clone();
+        // shr右移，shl左移。假如 3 左移6位 == 000000011  假如 3 右移6位 == 011000000
         tokenAddr = meme.clone();
         // 初始化克隆合约
         memeToken(tokenAddr).initialize(msg.sender, maxSupply, perMint, totalPrice);

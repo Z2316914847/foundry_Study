@@ -99,6 +99,8 @@ contract NFTMarket{
         return (seller, price);
     }
 
+    // 封装multicall
+    // 参数：data：需要调用的合约地址， callData：需要调用的合约方法
     struct Call {
         address target;
         bytes callData;
@@ -147,7 +149,8 @@ contract NFTMarket{
 
     }
 
-    // 验证地址是否在白名单中 -- 不理解
+    // 验证地址是否在白名单中 - 不理解 ： 可以去看nftMaket - 去中心化数字藏品项目描述，里面有介绍 ，不知道在哪可以联系我QQ:2844847674
+    // 参数：user：用户地址，proof：提供从叶子节点到根节点的路径上缺失的兄弟哈希值。
     function isWhitelisted(address user, bytes32[] calldata proof) public view returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(user));
         bytes32 computedHash = leaf;

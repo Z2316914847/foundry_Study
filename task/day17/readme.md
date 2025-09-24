@@ -16,16 +16,17 @@
     再次精进：
         1.函数内减少不必要的变量、能使用constant和imultable就是要用、避免无限循环
         2.事件变为匿名索引（按照你的需求来配置，一般我们使用普通事件的）
-        3.mapping和数组选择。
+        3.mapping和数组选择类型选择，有助于gas优化，比如：
+          - 查询某个数据是否在合约中，如果使用数组的话，要遍历整个数组，而使用mapping的话，就只要判断以下即可
 
 ```
 
 遇到的问题
-    - 测试用例必须包含一个测试函数，才能运行
-    - Gas消耗导出成一个文件：forge test test/NFTMarketGasTest.t.sol --gas-report > gas_report_v1.md
-    - immutable和constant修饰符：只能修饰值类型数据
-    - anvil部署的合约，公共客户端用：chain：foundry，transport：http("http://localhost:8545")
-    - console.log()：不支持打印结构体 
+  - 测试用例必须包含一个测试函数，才能运行
+  - Gas消耗导出成一个文件：forge test test/NFTMarketGasTest.t.sol --gas-report > gas_report_v1.md
+  - immutable和constant修饰符：只能修饰值类型数据
+  - anvil部署的合约，公共客户端用：chain：foundry，transport：http("http://localhost:8545")
+  - console.log()：不支持打印结构体 
 
 
 

@@ -5,18 +5,26 @@ import "../../lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC7
 import "../../lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+// import "./utils/ERC721Upgradeable.sol";
+// import "./utils/OwnableUpgradeable.sol";
+// import "./utils/Initializable.sol";
+// import "./utils/UUPSUpgradeable.sol";
 
 
-// upGradeNFT是逻辑合约，它里面的状态变量有特殊的存储布局
+// upGradeNFTV1是逻辑合约，它里面的状态变量有特殊的存储布局
+// UUPSUpgradeable 让 upGradeNFTV1 具有一个方法，这个方法可以升级逻辑合约地址
 contract upGradeNFTV1 is Initializable, ERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable{
     uint256 private _nextTokenId;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _disableInitializers(); 
+        _disableInitializers();  // 禁用逻辑合约的初始化，这样后面 代理合约 才能调用 逻辑合约initialize函数，来完成逻辑合约初始化
+        // 为什么逻辑合约中不完成初始化：因为，逻辑合约初始化后，会有自己的 存储布局，然后存储槽就会有 数据。
+        //   后面逻辑合约调用initialize函数时，代理合约中的存储槽也会有数据，这样两个存储槽变冲突了。
+        // 所以 禁止 逻辑合约自己初始化。假如逻辑合约初始化后，那代理合约就不能 初始化 逻辑合约。
     }
 
-    // 
+    // 初始化
     function initialize(string memory name, string memory symbol) public initializer {
         __ERC721_init(name, symbol);  // 因为逻辑合约不能
         __Ownable_init(msg.sender);

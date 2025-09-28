@@ -2,8 +2,14 @@
 pragma solidity ^0.8.7;
 
 // 导入Chainlink自动化接口和OpenZeppelin权限控制
-import "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+// import "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
+
+import "../../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+
+interface AutomationCompatibleInterface {
+  function checkUpkeep(bytes calldata checkData) external returns (bool upkeepNeeded, bytes memory performData);
+  function performUpkeep(bytes calldata performData) external;
+}
 
 /**
  * @title 自动化银行合约
@@ -14,7 +20,7 @@ contract AutoBank is AutomationCompatibleInterface, Ownable {
     // 状态变量
     uint256 public totalDeposits;       // 总存款金额
     uint256 public threshold;           // 触发自动转账的阈值（wei单位）
-    address public immutable targetAddress; // 资金转移目标地址（不可变）
+    address public targetAddress; // 资金转移目标地址（不可变）
     
     // 用户余额映射
     mapping(address => uint256) public balances;
@@ -29,7 +35,7 @@ contract AutoBank is AutomationCompatibleInterface, Ownable {
      * @param _threshold 触发自动转账的阈值（wei单位）
      * @param _targetAddress 接收转移资金的地址
      */
-    constructor(uint256 _threshold, address _targetAddress) {
+    constructor(uint256 _threshold, address _targetAddress) public Ownable(msg.sender){
         threshold = _threshold;
         targetAddress = _targetAddress;
     }

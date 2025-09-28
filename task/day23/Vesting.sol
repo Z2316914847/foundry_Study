@@ -10,17 +10,17 @@ import {Test, console} from "forge-std/Test.sol";
 // 将需要 锁仓的 token 转移到这个合约中，并设置锁仓期限和释放周期。
 contract MyVesting {
 
-    address public immutable _beneficiary;    // 受益人
-    uint256 public immutable  _startTime;  // 锁仓开始时间
-    uint256 public immutable _LockPeriod; // 锁定期（12个月）
+    address public immutable _beneficiary;     // 受益人
+    uint256 public immutable  _startTime;      // 锁仓开始时间
+    uint256 public immutable _LockPeriod;      // 锁定期（12个月）
     uint256 public immutable  _vestingPeriod;  // 释放周期（24个月）
     ownerERC20Permit public immutable _token;  // 锁定的 Token 代币
-    uint256 public _totalAmount;  // 总锁定 Token 数量
+    uint256 public _totalAmount;               // 总锁定 Token 数量
     // mapping(address => uint256) public _erc20Released; // 我们只记录一个 token ，所以不用mapping
-    uint256 public _releasedAmount;  // 已释放 token 数量
+    uint256 public _releasedAmount;            // 已释放 token 数量
 
     // 参数：受益人地址、开始释放时间（Unix 时间戳）、总释放周期（秒）
-    constructor( address beneficiary, address tokenAddress ) public{
+    constructor( address beneficiary, address tokenAddress ){
         _token = ownerERC20Permit(tokenAddress);
         _beneficiary = beneficiary;
         _startTime = block.timestamp;
@@ -37,7 +37,7 @@ contract MyVesting {
         require( _token.transferFrom(msg.sender, address(this), amount), "Token transfer failed" );
     }
 
-    // 计算当前应当释放当前解锁的 ERC20 给受益人
+    // 计算当前 应当释放当前解锁的 ERC20 给受益人
     function  release() public returns (uint256) {
         
         uint256 currentReleasedAmount = getReleasableAmount() - _releasedAmount; 

@@ -61,10 +61,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         // 获取两种token的储备量
         (uint reserveA, uint reserveB) = UniswapV2Library.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
-            // 首次添加流动性
             (amountA, amountB) = (amountADesired, amountBDesired);
-            console.log("Router02 - _addLiquidity - amountA", amountA);
-            console.log("Router02 - _addLiquidity - amountB", amountB);
         } else {
             // 根据两种token的储备量和期望tokenA的数额获取tokenB最佳的数额
             uint amountBOptimal = UniswapV2Library.quote(amountADesired, reserveA, reserveB);
@@ -104,7 +101,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint amountADesired,
         uint amountBDesired,
         uint amountAMin,
-        uint amountBMin,
+        uint amountBMin, 
         address to,
         uint deadline
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
@@ -133,10 +130,11 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         address token,
         uint amountTokenDesired,
         uint amountTokenMin,
-        uint amountETHMin,
+        uint amountETHMin, // 最低ETH数量:为什么需要这个参数：这是两个token添加到流动性池子中，既然要最少token这个参数，那么最少eth参数也是必须要的。
         address to,
         uint deadline
     ) external payable virtual override ensure(deadline) returns (uint amountToken, uint amountETH, uint liquidity) {
+        // 首次是创建池子，再次添加流动性这个函数没啥作用，这个函数主要是获得期望获得两个代币的数量
         (amountToken, amountETH) = _addLiquidity(
             token,
             WETH,
@@ -150,13 +148,15 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
 
+        // 查询 pair地址 在两个token的存款
         (, bytes memory data) = WETH.call(abi.encodeWithSelector(bytes4(keccak256("balanceOf(address)")), pair));
         uint256 wethBalance = abi.decode(data, (uint256));
         console.log("pair weth balance:", wethBalance);
         (, bytes memory data1) = token.call(abi.encodeWithSelector(bytes4(keccak256("balanceOf(address)")), pair));
         uint256 tokenBalance = abi.decode(data1, (uint256));
-        console.log("pair weth balance:", tokenBalance);
+        console.log("pair token balance:", tokenBalance);
 
+        // 铸造lptoken，并且会修改pair合约的储备量和时间戳
         liquidity = IUniswapV2Pair(pair).mint(to);
         console.log("pair liquidity:", IUniswapV2Pair(pair).balanceOf(to));
 
@@ -328,17 +328,26 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
      * @param path 当没有两种token的交易对，需要进行多个兑换(tokenA->tokenB->ETH)
      * @param _to 接受兑换token的地址
      */
+    // 注意一般是不直接调用这个函数，这个函数是由别的函数调用，在调用这个函数之前，支付的代币已经转给pair合约了
+    // amounts[0] = 付出量  amounts[1] = 用户收到量(理想情况：只减去了手续费，没有滑点造成的损失)
+    // path[0] = 代币地址  path[1] = 代币地址
     function _swap(uint[] memory amounts, address[] memory path, address _to) internal virtual {
         // 循环path路径
+        // 当path.length>2时，即：用户向tokenA->tokenC,但是没有这个池子，不过呢，存在tokenA->tokenB和tokenB->tokenC池子
         for (uint i; i < path.length - 1; i++) {
-            // 计算每对交易对的兑换量
+            // 计算每对交易对的兑换量 
             (address input, address output) = (path[i], path[i + 1]);
+            // 两个代币地址排序，token0是较小的，token1是较大的（这里减少变量，没写token1）
             (address token0, ) = UniswapV2Library.sortTokens(input, output);
             uint amountOut = amounts[i + 1];
+            // 因为path[0]一定是付出地址，path[1]一定是收到量，现在如果input == token0，那么amount0Out = 0，amount1Out = amountOut，否则相反
             (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOut) : (amountOut, uint(0));
             // 如果中间还有其他的路径，to地址为其中交易对的pair地址
             address to = i < path.length - 2 ? UniswapV2Library.pairFor(factory, output, path[i + 2]) : _to;
             // 进行兑换
+            // 用户想要 支出 token0，收入 token1。那么参数就是 (amount0Out = 0, amount1Out = X)。
+            // 用户想要 支出 token1，收入 token0。那么参数就是 (amount0Out = Y, amount1Out = 0)。
+            // 注意用想要token0，那么执行pair合约swap函数之前，我们的token1便转给pair合约了
             IUniswapV2Pair(UniswapV2Library.pairFor(factory, input, output)).swap(
                 amount0Out,
                 amount1Out,
@@ -364,16 +373,17 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         address to,
         uint deadline
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
-        // 根据传入的tokenA的数量和path获得兑换后的amounts
+        // 根据传入的tokenA的数量和path获得兑换后的amounts， amounts = ( amountIn * 997 *  reserveOut ) / ( reserveIn * 1000 + amountIn * 997 ) 
+        // amounts[0] = amountIn, amounts[1] = amountIn * 997 *  reserveOut / ( reserveIn * 1000 + amountIn * 997 )
         amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path);
         // 判断最终获得的tokenB的数量是否大于amountOutMin
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
-        // 将tokenA传入第一对交易对中
+        // 将tokenA转给pair合约
         TransferHelper.safeTransferFrom(
             path[0],
             msg.sender,
             UniswapV2Library.pairFor(factory, path[0], path[1]),
-            amounts[0]
+            amounts[0]  // 计算能获得的代币数量，然后转给pair合约
         );
         // 兑换
         _swap(amounts, path, to);
@@ -444,25 +454,26 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     }
 
     // 根据确切数量的token的兑换ETH
+    // 获取期望的eth数量 -》 token转账 -》 然后进行兑换 -》获得 weth
     function swapExactTokensForETH(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
+        uint amountIn,  // 输入的token数量
+        uint amountOutMin,  // 最小eth数量，如果小于这个数量，那么交易失败
+        address[] calldata path,  // 两个token的地址  path[0] = tokenAddr   path[1] = wethAddr
+        address to,  // 接收eth的地址
+        uint deadline  // 交易允许最后执行时间
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
         require(path[path.length - 1] == WETH, 'UniswapV2Router: INVALID_PATH');
         amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path);
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0],
+            path[0],  // 合约地址
             msg.sender,
             UniswapV2Library.pairFor(factory, path[0], path[1]),
-            amounts[0]
+            amounts[0]  // 计算能获得的代币数量，然后转给pair合约
         );
-        _swap(amounts, path, address(this));
-        IWETH(WETH).withdraw(amounts[amounts.length - 1]);
-        TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
+        _swap(amounts, path, address(this));  // 注意address(this)是当前合约地址，在pair合约中的swap方法中，他将weth转给router合约
+        IWETH(WETH).withdraw(amounts[amounts.length - 1]);  // 减少 weth
+        TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);  // weth合约给用户转eth
     }
 
     // 根据需要获得确切数量的token传入需要ETH的数量

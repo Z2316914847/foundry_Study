@@ -24,7 +24,7 @@ library UniswapV2Library {
                 hex'ff',  // 一个固定的前缀
                 factory,   // sender_address  部署合约的地址。
                 keccak256(abi.encodePacked(token0, token1)),  // salt:利用token代币和weth代币作为参数=》生产create2所需的salt值
-                hex'59ff9d0c7ab8ed99852df28616d3e804f06336db712adb6e6ce50a35508ebe90'   // Pair 合约的初始化代码哈希
+                hex'06b456d9d81e948a6aeff6fb665be54a4b4ebd89311d76cb27c3d913fe64dc2b'   // Pair 合约的初始化代码哈希
             )))));
     }
 
@@ -32,8 +32,6 @@ library UniswapV2Library {
     function getReserves(address factory, address tokenA, address tokenB) internal view returns (uint reserveA, uint reserveB) {
         (address token0,) = sortTokens(tokenA, tokenB);
         (uint reserve0, uint reserve1,) = IUniswapV2Pair(pairFor(factory, tokenA, tokenB)).getReserves();
-        console.log("reserve0", reserve0);
-        console.log("reserve1", reserve1);
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
@@ -52,6 +50,7 @@ library UniswapV2Library {
         uint numerator = amountInWithFee.mul(reserveOut);
         uint denominator = reserveIn.mul(1000).add(amountInWithFee);
         // amountOut = ( amountIn * 997 *  reserveOut ) / ( reserveIn * 1000 + amountIn * 997 )
+        // 起始就是由这个简化而来：（resever0+x）*（reserve1+y）=reserve0*reserve1
         amountOut = numerator / denominator;
     }
 
@@ -65,18 +64,20 @@ library UniswapV2Library {
         amountIn = (numerator / denominator).add(1);
     }
 
-    // 对任意数量的交易对执行链式getAmountOut计算
+    // 对任意数量的交易对执行链式getAmountOut计算  计算amount[0]付出量,amount[1]获得量
+    // 计算提供这些代币，能获得多少其他代币
     function getAmountsOut(address factory, uint amountIn, address[] memory path) internal view returns (uint[] memory amounts) {
         require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
         amounts = new uint[](path.length);
         amounts[0] = amountIn;
         for (uint i; i < path.length - 1; i++) {
-            (uint reserveIn, uint reserveOut) = getReserves(factory, path[i], path[i + 1]);
+            (uint reserveIn, uint reserveOut) = getReserves(factory, path[i], path[i + 1]);  // 获取储备量
             amounts[i + 1] = getAmountOut(amounts[i], reserveIn, reserveOut);
         }
     }
 
     // 对任意数量的交易对执行链式getAmountIn计算
+    // 对要获得指定数量的代币，计算需要多少另一个代币
     function getAmountsIn(address factory, uint amountOut, address[] memory path) internal view returns (uint[] memory amounts) {
         require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
         amounts = new uint[](path.length);

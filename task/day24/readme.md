@@ -49,6 +49,17 @@
   - 为什么累计价格要有UQ112X112格式，而不是用整数格式保存累计价格。
     - 整数保存价格会导致精度损失（一个价格/另一个价格，有时候会产生小数点，soidity不支持小数点(浮点数)，这样小数点部分会被截断舍弃），导致价格计算不准确。
     - 累计价格(整数) X 时间 = 一个非常大的数，因为价格会有精度，这样累计价格乘以时间，会导致数值太大，超出Solidity的整数范围，造成溢出。
+  - 累计价格使用场景
+    - 预言机系统
+    - 防止闪电贷攻击
+    - 借贷协议
+    - 合成资产协议
+    - 保险协议
+    - 治理和Dao
+    - 跨连桥和桥接
+    - 衍生品交易
+  - TWAP使用：TWAP = (price0 * time0 + price1 * time1) / (time0 + time1)
+    - 
 
     
 问题2：
@@ -78,36 +89,70 @@ uniswapV3改善V2不足
 ``` 
 
 ### 2025-9-29 精进
-##### Pair合约
- - Pair交易对 是由 Factory合约工厂 创建的。
- - Pair交易对是一个 ERC20Permit(离线授权：发送一个交易，即可完成 ERC20授权和转账 )。
- - Pair交易对有两个代币，分别是token0和token1，并且有两个储备量，分别是reserve0和reserve1。注意 交易对中的各个代币的储备量 == Pair地址在两个token的持币量。 
- - 函数在合约中的位子，我们根据函数使用频率来决定函数使用位置 -- 不懂得话，可以自己AI以下：根据 Solidity 风格指南，函数和事件和修饰器应该如何排序
- - Pair交易对几种重要方法：
-   - 简单介绍
+#### Pair合约
+  ##### Pair基础知识点 
+    - Pair交易对 是由 Factory合约工厂 创建的。
+    - Pair交易对是一个 ERC20Permit(离线授权：发送一个交易，即可完成 ERC20授权和转账 )。
+    - Pair交易对是一个ERC20，他有 totalsuppply这个状态变量， totalsupply == LP token == sqrt(resever0*reserver1)
+    - Pair交易对有两个代币，分别是token0和token1，并且有两个储备量，分别是reserve0和reserve1。注意 交易对中的各个代币的储备量 == Pair地址在两个token的持币量。 
+    - 函数在合约中的位子，我们根据函数使用频率来决定函数使用位置 -- 不懂得话，可以自己AI以下：根据 Solidity 风格指南，函数和事件和修饰器应该如何排序
+  ##### Pair交易对几种重要方法：
+   - **简单介绍**
      - permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external：离线授权，验证签名是否有效，有效的化就授权转账。
      - mint(address to) external lock returns (uint liquidity): 给 用户to 铸造 LP token 
      - burn(address to) external lock returns (uint amount0, uint amount1): 用户to 销毁 LP token，并获得交易对中 一部分数量 的两种代币。
      - swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock returns (uint amount0In, uint amount1In): 用户 to 根据tokenA的数量在交易池中进行兑换tokenB。
      - skim(address to) external：使两个token的余额与储备相等。当有人不小心给 交易对 转了token，会导致 储备量 != 持币量，会影响后续价格计算错误。
      - sync() external：使两个token的储备与余额相匹配。
-    - 详细介绍
+    - **详细介绍**
       - permit()：不理解的话，你可以去看 task/day14文件夹，有permit和permit2详细介绍
-      - mint():
+      - mint(address to):
         - 获取用户实际转入代币数量
         - 计算给项目方手续费（一般项目方不会要的，因为项目方看不起 这三瓜两枣的 流动性 手续费），这个方法只在 mint 和 burn 存在
-          - 收取收取手续费计算逻辑
+          - 收取手续费计算逻辑
             - 判断是不是首次添加流动性，如果是（ k=0 ），则不收取手续费。如果不是（ k>0 ），则收取手续费。
-            - 手续费 = 1/6 * (sqrt当前(reserve0 * reserve1) - sqrt上次(resever0 *resever1))
+            - 手续费 ≈ （1/6） * totalSupply上次*（k当前-k上次）
         - 计算 应该铸造多少流动性
-          - 首次添加流动性(Lp token =0)
-            - 为什么就用 lp token，而不是用其他他的，比如 k。因为，假如攻击者给这个发送代币，就会影响 k，所有不用 k 这个变量。而是使用 Lp token，因为它不受外部影响
+          - 首次添加流动性(Lp token = 0)
+            - 为什么就用 lp token=0，而不是用其他的变量等于0呢？比如 k。不使用k,是因为，假如攻击者给这个发送代币，就会影响 k，所有不用 k 这个变量。而是使用 Lp token，因为它不受外部影响
             - 首次添加流动性，需要锁定 最小份额。不理解可以看代码，我有介绍
           - 非首次添加流动性(Lp token > 0)
             - 非首次添加流动性，不需要锁定 最小份额。
             - 计算 Lp token = Math.min(amount0.mul(_totalSupply) / _reserve0, amount1.mul(_totalSupply) / _reserve1);
         - 铸造流动性，发给用户
-        - 更新resever0，resever1，blockTimestampLast，K
+        - 更新resever0当前，resever1当前，resever0累计价格，resever1累计价格,当前时间戳，K
+          - 累计价格0 + = [(resever1*2**112)/resever0]*(block.timestamp当前 - block.timestamp上次)
+          - 累计价格1 + = [(resever0*2**112)/resever1]*(block.timestamp当前 - block.timestamp上次)
+          - 距离上次更新时间间隔 = block.timestamp - blockTimestampLast
+          - K = reserve0当前 * reserve1当前
+          - 有人会问，累计价格有什么用：具体用途在本文档 问题1最后面介绍了。
         - 触发事件
+      - burn(address to):
+        - 首先的明白这两点，这样看pair合约中的 burn方法才不会迷糊 : 
+          - Pair合约地址本身是没有 LP token的，Pair里的 LP token 是 发给提供流动性的用户 和项目方的。
+          - 用户手里的LP token必须授权给Router合约，然后Router合约将 LP token 转给Pair合约。这样一来，Pair合约就有了 LP token，这样 Pair合约 才
+        - 获取需要销毁的 LP token 数量
+        - 计算给项目方手续费：同上
+        - 计算用户应的代币数量：
+          - 计算方式：resever0 = LP销毁*resever0上次/totalsupply上次，resever1 同理计算
+        - 调用erc20的burn方法，销毁 LP token
+        - 给用户转账
+        - 更新resever0当前，resever1当前，resever0累计价格，resever1累计价格,当前时间戳，K
+        - 触发事件
+      - swap(uint amount0Out, uint amount1Out, address to, bytes calldata data):
+        - 首先的明白
+          - 兑换后，必须保证 K后 >= K前（有大于号，是因为兑换收取了 手续费）
+          - amount0Out 和 amount1Out 其中一个必定为0，另一个必定为用户想要兑换的代币数量。
+          - data 这个是闪电贷需要的数据。
+        - 用户所需的代币转移。
+        - 转发给闪电贷
+        - 判断 K后 >= K前，如果不满足，则触发 revert。
+        - 更新resever0当前，resever1当前，resever0累计价格，resever1累计价格,当前时间戳，K
+        - 触发事件
+      - skim():
+        - 这个方法是为了解决 储备量 > 持币量 的问题。比如攻击者给 Pair转代币，导致后续计算错误。
+      - sync():
+        - 这个是为了解决 储备量 != 持币量 的问题。当 存储量 != 持币量 时，就要尽快调用这个方法。防止后续造成损失。
 
+#### Factry合约
 

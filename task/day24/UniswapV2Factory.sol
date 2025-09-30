@@ -8,7 +8,7 @@ import { console } from "forge-std/Test.sol";
 
 // 有所的部署的 pair 合约都来自 factory合约
 contract UniswapV2Factory is IUniswapV2Factory {
-    // 收取手续费的地址，默认时adress(0)地址，如果设置了feeTo，则收取手续费，这个手续费给feeTo地址，手续费 = 1*sqrt(K现在/K上次)/6(大概就是 1/6 x √K增长 / √K当前 给 feeTo地址)
+    // 收取手续费的地址，默认时adress(0)地址，如果设置了feeTo，则收取手续费，这个手续费给feeTo地址，手续费 = （1/6） * totalSupply上次*（k当前-k上次）
     address public feeTo;
     // 设置feeTo的权限者地址(admin管理员)
     address public feeToSetter;

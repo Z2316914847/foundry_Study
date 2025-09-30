@@ -98,13 +98,13 @@ uniswapV3改善V2不足
     - 函数在合约中的位子，我们根据函数使用频率来决定函数使用位置 -- 不懂得话，可以自己AI以下：根据 Solidity 风格指南，函数和事件和修饰器应该如何排序
   ##### Pair交易对几种重要方法：
    - **简单介绍**
-     - permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external：离线授权，验证签名是否有效，有效的化就授权转账。
-     - mint(address to) external lock returns (uint liquidity): 给 用户to 铸造 LP token 
-     - burn(address to) external lock returns (uint amount0, uint amount1): 用户to 销毁 LP token，并获得交易对中 一部分数量 的两种代币。
-     - swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock returns (uint amount0In, uint amount1In): 用户 to 根据tokenA的数量在交易池中进行兑换tokenB。
-     - skim(address to) external：使两个token的余额与储备相等。当有人不小心给 交易对 转了token，会导致 储备量 != 持币量，会影响后续价格计算错误。
-     - sync() external：使两个token的储备与余额相匹配。
-    - **详细介绍**
+      - permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external：离线授权，验证签名是否有效，有效的化就授权转账。
+      - mint(address to) external lock returns (uint liquidity): 给 用户to 铸造 LP token 
+      - burn(address to) external lock returns (uint amount0, uint amount1): 用户to 销毁 LP token，并获得交易对中 一部分数量 的两种代币。
+      - swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock returns (uint amount0In, uint amount1In): 用户 to 根据tokenA的数量在交易池中进行兑换tokenB。
+      - skim(address to) external：使两个token的余额与储备相等。当有人不小心给 交易对 转了token，会导致 储备量 != 持币量，会影响后续价格计算错误。
+      - sync() external：使两个token的储备与余额相匹配。
+   - **详细介绍**
       - permit()：不理解的话，你可以去看 task/day14文件夹，有permit和permit2详细介绍
       - mint(address to):
         - 获取用户实际转入代币数量

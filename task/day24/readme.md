@@ -211,6 +211,7 @@ uniswapV3改善V2不足
           - 注意 ETH 不是ERc20代币，没有授权、TransferFrom功能，所以用户无法授权ETH给用户，只能转账给Router合约。
           - 有人会问，为什么WETH中，为什么不给用户存款，然后用户通过授权将 WETH 授权给 Router合约。答：因为用户交易已经进到合约里了，我就问你，用户怎么在次去授权WETH给Router合约？你懂了吧。所以这样设计（WETH中直接给Router合于存款）是合理的
         - 调用 Pair交易对中的 mint()方法添加流动性
+-------------------
       - removeLiquidity(): TokenA-TokenB 流动性移除
         - 获取 Pair交易对的地址
         - 将流动性代币 LP Token 转给 Pair交易对合约
@@ -219,4 +220,20 @@ uniswapV3改善V2不足
         - 调用removeLiquidity( ，WETH， ， ， ，address(this), )方法。注意参数不同
         - 将两个代币数量 转给用户（是不是有疑问？这里为什么又要转代币给用户？因为调用调用removeLiquidity这个中to的地址是 Router合约地址）。
       - removeLiquidityWithPermit(): TokenA-TokenB 流动性移除，增加 permit 功能
+        - 验证离线签名
+          - 将流动性代币 LP Token 转给 Pair交易对合约
+        - 调用 removeLiquidity()方法。
+      - removeLiquidityETHWithPermit(): TokenA-ETH 流动性移除，增加 permit 功能
+        - 验证离线签名
+          - 将流动性代币 LP Token 转给 Pair交易对合约
+        - 调用 removeLiquidityETH()方法
+      - removeLiquidityETHSupportingFeeOnTransferTokens(): TokenA-ETH 流动性移除，增加 fee-to-transfer功能（有些代币在转账时会收取手续费）
+        - 调用removeLiquidity( ，WETH， ， ， ，address(this), )方法。注意参数不同
+        - 将两个代币数量 转给用户
+      - removeLiquidityWithPermitSupportingFeeOnTransferTokens(): TokenA-TokenB 流动性移除，增加 fee-to-transfer功能 + permit 功能
+        - 验证离线签名
+          - 将流动性代币 LP Token 转给 Pair交易对合约
+        - 调用 removeLiquidityETHSupportingFeeOnTransferTokens()方法
+----------------------
+      - 
 

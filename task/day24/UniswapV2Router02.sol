@@ -80,7 +80,8 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
             }
         }
     }
-
+    
+    // 添加流动性： 两个 token
     /**
      * @dev 根据两种token的地址向其交易对添加流动性
      * @param tokenA tokenA地址
@@ -107,13 +108,16 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
-        // 转账两种token的amount数量到pair合约
+
+        // 转账两种token的amount数量到pair合约，如果用户代币数量不足，则转账失败，抛出异常
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
+
         // 向to地址铸造lptoken
         liquidity = IUniswapV2Pair(pair).mint(to);
     }
 
+    // 添加流动性： token 和 ETH
     /**
      * @dev 根据token的地址向其与WETH合约的交易对添加流动性
      * @param token token地址
@@ -164,6 +168,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
     }
 
+    // 移除流动性： 两个 token
     /**
      * @dev 根据两种token的地址向其交易对移除流动性
      * @param tokenA tokenA地址
@@ -196,7 +201,8 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
         require(amountB >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
     }
-
+    
+    // 移除流动性： token 和 ETH
     function removeLiquidityETH(
         address token,
         uint liquidity,
@@ -212,7 +218,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
             liquidity,
             amountTokenMin,
             amountETHMin,
-            address(this),
+            address(this),   // 将 两种代币 发送到 Router合约，然后Router在将两种代币发给用户。
             deadline
         );
         // 转到to地址
@@ -221,6 +227,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         TransferHelper.safeTransferETH(to, amountETH);
     }
 
+    // 移除流动性： 两个 token，  这个方法支持用户在不预先授权的情况下移除流动性，通过permit功能进行身份验证
     /**
      * @dev 相对于removeLiquidity引入了许可功能进行身份验证
      * @param tokenA tokenA地址
@@ -258,6 +265,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
     }
 
+    // 移除流动性： token 和 ETH，  这个方法支持用户在不预先授权的情况下移除流动性，通过permit功能进行身份验证
     function removeLiquidityETHWithPermit(
         address token,
         uint liquidity,
@@ -277,6 +285,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         (amountToken, amountETH) = removeLiquidityETH(token, liquidity, amountTokenMin, amountETHMin, to, deadline);
     }
 
+    // 移除流动性：token 和 ETH， 这个方法处理的是：有些token在进行转账时，会收费，所以需要这个方法
     // 移除流动性（支持转账手续费代币）：相对于removeLiquidityETH适用于处理在资金池中具有“费用分摊”（fee-on-transfer）机制的代币
     // 参数：token: 需要移除的token地址, liquidity: 移除的lptoken数量, amountTokenMin: 愿意接受的最低token数量, amountETHMin: 愿意接受的最低ETH数量, to: 接受两种token的地址, deadline: 交易允许最后执行时间
     // 返回：amountETH: 移除流动性获得ETH的数量
@@ -294,6 +303,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         TransferHelper.safeTransferETH(to, amountETH);
     }
 
+    // 移除流动性：token 和 ETH， 这个方法支持： Fee-on-transfer + Permit 功能
     function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
         address token,
         uint liquidity,

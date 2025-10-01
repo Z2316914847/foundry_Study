@@ -26,8 +26,9 @@
 
       create2(
         0,   // 指创建合约后向合约发送x数量wei的以太币
-        add(bytecode, 32),   // bytecode：被实际部署的合约的字节码  .opcode的add方法,将bytecode偏移后32位字节处,因为前32位字节存的是bytecode长度
-        mload(bytecode),   // opcode的方法,获得bytecode长度          salt   // 随机数,但要保证唯一性。
+        add(bytecode, 32),   // bytecode：被实际部署的合约的字节码，字节码所要占的位置太大，所以将部署的字节码被放到内存中，而在内存中复杂数据存储方式：数据长度(32字节)+数据内容(紧挨着一起)。bytecode在内存中可以理解为一个 内存指针，指向内存某块位置。
+        mload(bytecode),   // 从 bytecode 的内存地址加载其长度（即前 32 字节）。这告诉 EVM 需要拷贝多长的字节码        
+        salt   // 随机数,但要保证唯一性。
       )
     ```
   - 预测合约地址
@@ -59,9 +60,8 @@
     - 跨连桥和桥接
     - 衍生品交易
   - TWAP使用：TWAP = (price0 * time0 + price1 * time1) / (time0 + time1)
-    - 
 
-    
+
 问题2：
   - 获取合约初始化代码哈希：forge inspect UniswapV2Pair bytecode
     这是预知合约地址的必要元素 :bytes32[keecak256(forge inspect UniswapV2Pair bytecode)]
@@ -157,4 +157,66 @@ uniswapV3改善V2不足
         - 这个是为了解决 储备量 != 持币量 的问题。当 存储量 != 持币量 时，就要尽快调用这个方法。防止后续造成损失。
 
 #### Factry合约
+  ##### Factory基础知识点
+    - Factory合约注意功能 管理feeTo的权限者地址 和 部署 pair交易对。
+    - 在内存中 数据存储存储方式
+  ##### Factory重要方法
+    - 不用 简单 和 详细 介绍了，因为就一个方法（createpair(tokenA,tokenB)）比较重要
+      - 将两个 token地址 进行排序，小的作为token0，大的作为token1。
+      - 计算 Pair合约 的字节码。（注意create2部署是需要合约字节码，而预测是需要合约字节码的哈希值，我们应当注意这里两者）
+      - 部署 Pair交易对
+      - 初始化 Pair交易对
+      -触发事件
+      - 注意Pair合约的 Lp token 代币精度是 18。
+
+#### Router合约
+  ##### Router基础知识点
+    - Router合约是与pair交易对进行交互的合约，常用于添加流动性、移除流动性、兑换、获取交易对信息......
+    - WETH合约概念
+    - 
+  ##### Router重要方法
+    - **简单介绍**
+      - addLiquidity(address tokenA, address tokenB, uint amountAExpect, uint amountBExpect, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB, uint liquidity): 添加ToeknA-ToeknB的流动性。
+      - 添加ToeknA-ETH的流动性。
+      - removeLiquidity(address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB): 移除流动性TokenA-TokenB。
+      - 移除流动性TokenA-TETH。
+      - 移除流动性TokenA-TokenB，增加了 permit 功能。
+      - 移除流动性TokenA-ETH，增加了 permit 功能。
+      - 移除流动性TokenA-ETH，增加了 fee-to-transfer功能（注意：这里V2没有TokenA-TokenB-fee-to-transfer方法，原因是：实际应用场景较少，一般都是 Token-ETH ）。
+      - 移除流动性TokenA-ETH，增加了 fee-to-transfer功能 + permit 功能。
+      - swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts): 兑换：根据确切Token兑换Token。
+      - swapTokensForExactTokens(): 兑换: 根据 Token 兑换确切 Token
+      - 兑换：根据确切 ETH 兑换 Token
+      - 兑换：根据 Token 兑换确切 ETH
+      - swapExactTokensForETH(): 兑换：根据确切 ETH 兑换 Token
+      - swapETHForExactTokens(): 兑换：根据 Token 兑换确切 ETH 
+      - swapExactTokensForTokensSupportingFeeOnTransferTokens(): 兑换：根据确切 Token 兑换Token（支持 fee-to-transfer功能），直接交换	
+      - swapExactETHForTokensSupportingFeeOnTransferTokens(): 兑换：根据确切 ETH 兑换Token（支持 fee-to-transfer功能），ETH→WETH→Token	
+      - swapExactTokensForETHSupportingFeeOnTransferTokens(): 兑换：根据确切 token 兑换 ETH（支持 fee-to-transfer功能），Token→WETH→ETH	
+    - **详细介绍**
+      - addLiquidity(): TokenA-TokenB 流动性添加
+        - 部署 Pair交易对
+        - 计算出 两个代币数量
+          - 首次添加流动性(Pair交易对刚被部署)
+            - 试图返回 两个代币数量 == 期望数量（此时 Pair交易对是刚创建的，代币价格不会有波动，所以返回期望的数量即可）。
+          - 非首次添加流动性(Pair交易对已经存在，只不过再次添加流动性)
+            - 试图返回 两个代币数量（只不过这里要计算：有人会问，为什么要计算两个代币数量呢？我们直接使用 两个代币期望的数量 不就好了。 你错了，你应该考虑更多，在你添加流动时时，代币价格时时刻波动的，你的 两个代币数量期望值 只不过是某一时刻的价格。这样说理解了了吧。）
+              - 计算逻辑描述不出来，只能说：只可意会不可言传。自己看代码吧
+        - 转账（ transferFrom() ）两种token的amount数量到pair交易对合约，如果用户代币数量不足，则转账失败，抛出异常
+        - 调用 Pair交易对中的 mint()方法添加流动性
+      - addLiquidityETH(): TokenA-ETH 流动性添加
+        - 部署 Pair交易对( 注意：TokenA-WETH )
+        - 计算出 两个代币数量（基于原理同上）
+        - 转账（同上）
+          - 注意 ETH 不是ERc20代币，没有授权、TransferFrom功能，所以用户无法授权ETH给用户，只能转账给Router合约。
+          - 有人会问，为什么WETH中，为什么不给用户存款，然后用户通过授权将 WETH 授权给 Router合约。答：因为用户交易已经进到合约里了，我就问你，用户怎么在次去授权WETH给Router合约？你懂了吧。所以这样设计（WETH中直接给Router合于存款）是合理的
+        - 调用 Pair交易对中的 mint()方法添加流动性
+      - removeLiquidity(): TokenA-TokenB 流动性移除
+        - 获取 Pair交易对的地址
+        - 将流动性代币 LP Token 转给 Pair交易对合约
+        - 调用 Pair交易对中的 burn()方法 移除流动性
+      - removeLiquidityETH(): TokenA-ETH 流动性移除
+        - 调用removeLiquidity( ，WETH， ， ， ，address(this), )方法。注意参数不同
+        - 将两个代币数量 转给用户（是不是有疑问？这里为什么又要转代币给用户？因为调用调用removeLiquidity这个中to的地址是 Router合约地址）。
+      - removeLiquidityWithPermit(): TokenA-TokenB 流动性移除，增加 permit 功能
 

@@ -90,23 +90,23 @@ uniswapV3改善V2不足
 
 -----------------------------------------------------
 
-### 2025-9-29 精进
-#### Pair合约
-  ##### Pair基础知识点 
-    - Pair交易对 是由 Factory合约工厂 创建的。
-    - Pair交易对是一个 ERC20Permit(离线授权：发送一个交易，即可完成 ERC20授权和转账 )。
-    - Pair交易对是一个ERC20，他有 totalsuppply这个状态变量， totalsupply == LP token == sqrt(resever0*reserver1)
-    - Pair交易对有两个代币，分别是token0和token1，并且有两个储备量，分别是reserve0和reserve1。注意 交易对中的各个代币的储备量 == Pair地址在两个token的持币量。 
-    - 函数在合约中的位子，我们根据函数使用频率来决定函数使用位置 -- 不懂得话，可以自己AI以下：根据 Solidity 风格指南，函数和事件和修饰器应该如何排序
-  ##### Pair交易对几种重要方法：
-   - **简单介绍**
-      - permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external：离线授权，验证签名是否有效，有效的化就授权转账。
-      - mint(address to) external lock returns (uint liquidity): 给 用户to 铸造 LP token 
-      - burn(address to) external lock returns (uint amount0, uint amount1): 用户to 销毁 LP token，并获得交易对中 一部分数量 的两种代币。
-      - swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock returns (uint amount0In, uint amount1In): 用户 to 根据tokenA的数量在交易池中进行兑换tokenB。
-      - skim(address to) external：使两个token的余额与储备相等。当有人不小心给 交易对 转了token，会导致 储备量 != 持币量，会影响后续价格计算错误。
-      - sync() external：使两个token的储备与余额相匹配。
-   - **详细介绍**
+# 2025-9-29 精进
+## 一：Pair合约
+### Pair基础知识点 
+  - Pair交易对 是由 Factory合约工厂 创建的。
+  - Pair交易对是一个 ERC20Permit(离线授权：发送一个交易，即可完成 ERC20授权和转账 )。
+  - Pair交易对是一个ERC20，他有 totalsuppply这个状态变量， totalsupply == LP token == sqrt(resever0*reserver1)
+  - Pair交易对有两个代币，分别是token0和token1，并且有两个储备量，分别是reserve0和reserve1。注意 交易对中的各个代币的储备量 == Pair地址在两个token的持币量。 
+  - 函数在合约中的位子，我们根据函数使用频率来决定函数使用位置 -- 不懂得话，可以自己AI以下：根据 Solidity 风格指南，函数和事件和修饰器应该如何排序
+### Pair交易对几种重要方法：
+#### 简单介绍
+  - permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external：离线授权，验证签名是否有效，有效的化就授权转账。
+  - mint(address to) external lock returns (uint liquidity): 给 用户to 铸造 LP token 
+  - burn(address to) external lock returns (uint amount0, uint amount1): 用户to 销毁 LP token，并获得交易对中 一部分数量 的两种代币。
+  - swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock returns (uint amount0In, uint amount1In): 用户 to 根据tokenA的数量在交易池中进行兑换tokenB。
+  - skim(address to) external：使两个token的余额与储备相等。当有人不小心给 交易对 转了token，会导致 储备量 != 持币量，会影响后续价格计算错误。
+  - sync() external：使两个token的储备与余额相匹配。
+#### 详细介绍
       - permit()：不理解的话，你可以去看 task/day14文件夹，有permit和permit2详细介绍
       - mint(address to):
         - 获取用户实际转入代币数量
@@ -157,7 +157,7 @@ uniswapV3改善V2不足
         - 这个是为了解决 储备量 != 持币量 的问题。当 存储量 != 持币量 时，就要尽快调用这个方法。防止后续造成损失。
 
 #### Factry合约
-  ##### Factory基础知识点
+##### Factory基础知识点
     - Factory合约注意功能 管理feeTo的权限者地址 和 部署 pair交易对。
     - 在内存中 数据存储存储方式
   ##### Factory重要方法

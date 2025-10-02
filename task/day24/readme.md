@@ -184,15 +184,15 @@ uniswapV3改善V2不足
       - 移除流动性TokenA-ETH，增加了 permit 功能。
       - 移除流动性TokenA-ETH，增加了 fee-to-transfer功能（注意：这里V2没有TokenA-TokenB-fee-to-transfer方法，原因是：实际应用场景较少，一般都是 Token-ETH ）。
       - 移除流动性TokenA-ETH，增加了 fee-to-transfer功能 + permit 功能。
-      - swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts): 兑换：根据确切Token兑换Token。
-      - swapTokensForExactTokens(): 兑换: 根据 Token 兑换确切 Token
-      - 兑换：根据确切 ETH 兑换 Token
-      - 兑换：根据 Token 兑换确切 ETH
-      - swapExactTokensForETH(): 兑换：根据确切 ETH 兑换 Token
-      - swapETHForExactTokens(): 兑换：根据 Token 兑换确切 ETH 
-      - swapExactTokensForTokensSupportingFeeOnTransferTokens(): 兑换：根据确切 Token 兑换Token（支持 fee-to-transfer功能），直接交换	
-      - swapExactETHForTokensSupportingFeeOnTransferTokens(): 兑换：根据确切 ETH 兑换Token（支持 fee-to-transfer功能），ETH→WETH→Token	
-      - swapExactTokensForETHSupportingFeeOnTransferTokens(): 兑换：根据确切 token 兑换 ETH（支持 fee-to-transfer功能），Token→WETH→ETH	
+      - swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts): 兑换：根据确切TokenA，获取 TokenB。用户只需要输入确切的TokenA数量和最低数量的TokenB数量和兑换地址即可。
+      - swapTokensForExactTokens(): 兑换: 获取确切 TokenB，需要多少tokenA。用户只需要确切的TokenB数量和用户想要确切TokenB愿意支付最大的TokenA数量和兑换地址即可。
+      - 兑换2：根据确切数量的ETH的兑换token
+      - 兑换2-2：根据需要获得确切数量的ETH 传入 需要token的数量
+      - swapExactTokensForETH(): 兑换：根据确切 token 兑换 Token
+      - swapETHForExactTokens(): 兑换：根据需要获得确切的 Token 传入 需要 ETH的数量 
+      - swapExactTokensForTokensSupportingFeeOnTransferTokens(): 兑换：根据确切 TokenA 兑换TokenB（支持 fee-to-transfer功能），直接交换	
+      - swapExactETHForTokensSupportingFeeOnTransferTokens(): 兑换：根据确切 ETH 兑换Token（支持 fee-to-transfer功能）。
+      - swapExactTokensForETHSupportingFeeOnTransferTokens(): 兑换：根据确切 token 兑换 ETH（支持 fee-to-transfer功能）。
     - **详细介绍**
       - addLiquidity(): TokenA-TokenB 流动性添加
         - 部署 Pair交易对
@@ -211,7 +211,6 @@ uniswapV3改善V2不足
           - 注意 ETH 不是ERc20代币，没有授权、TransferFrom功能，所以用户无法授权ETH给用户，只能转账给Router合约。
           - 有人会问，为什么WETH中，为什么不给用户存款，然后用户通过授权将 WETH 授权给 Router合约。答：因为用户交易已经进到合约里了，我就问你，用户怎么在次去授权WETH给Router合约？你懂了吧。所以这样设计（WETH中直接给Router合于存款）是合理的
         - 调用 Pair交易对中的 mint()方法添加流动性
--------------------
       - removeLiquidity(): TokenA-TokenB 流动性移除
         - 获取 Pair交易对的地址
         - 将流动性代币 LP Token 转给 Pair交易对合约
@@ -234,6 +233,44 @@ uniswapV3改善V2不足
         - 验证离线签名
           - 将流动性代币 LP Token 转给 Pair交易对合约
         - 调用 removeLiquidityETHSupportingFeeOnTransferTokens()方法
-----------------------
-      - 
+      - swapExactTokensForTokens(): 兑换：根据确切Token，获取 Token
+        - 兑换这一些列方法，我们首先的明白参数的含义：
+          - amountIn: 用户想要兑换的Token数量
+          - amountOutMin: 用户期望的兑换Token数量最小值
+          - path: 兑换路径，即用户想要兑换的Token的地址顺序。这个Path是一个数组，在这个方法中，Path第一个元素是用户 付出token的地址，最后一个元素是用户想要兑换的token的地址。
+          - to: 兑换后代币的接收地址
+          - deadline: 兑换的截止时间
+        - 计算出能兑换的Token数量A
+          - (resever0+x)*(resever1+y)=resever0*resever1： 已知x，求y
+        - 判断兑换出的Token数量A是否大于用户能接受的最小数量
+        - 将用户代币 Token转给 Pair交易对合约
+        - 调用 Pair交易对中的 swap()方法 进行兑换
+      - swapTokensForExactTokens(): 兑换: 获取确切TokenB数量，需要多少tokenA
+        - 计算出需要多少个TokenA
+        - 判断兑换出的Token数量A 是否 小于 用户能接受的最大数量（）如果小于的话，就交易成功，否则交易失败）。这里有人会问，如果合约计算出来的数量远远小于用户能接受的最大数量后，用户授权给Router合约的剩余代币怎么处理，答，这些代币Router合约是自己动用的，需要用户自己处理剩余的代币
+        - 将用户代币 Token转给 Pair交易对合约
+        - 调用 Pair交易对中的 swap()方法 进行兑换
+      - swapExactETHForTokens(): 兑换：根据确切ETH，获取 Token
+        - 和swapExactTokensForTokens差不多，只不过swapExactETHForTokens这个方法多了一步：ETH转换为WETH，然后 WETH 转给 Pair交易地址。然后调用 Pair交易对中的 swap()方法 进行兑换
+      - swapTokensForExactETH()：兑换：获取确切 ETH数量，需要多少tokenA
+        - 和swapTokensForExactTokens差不过，只不过swapTokensForExactETH这个方法多了一步：大概原因是：Pair将WETH转给Router合约了，然后router合约将WETH转换为ETH，然后Route合约r再将ETH转给用户
+      - swapExactTokensForETH(): 兑换：根据确切Token，获取 ETH
+        - 计算出需要多少个TokenA
+        - 将用户代币 Token转给 Pair交易对合约
+        - 调用 Pair交易对中的 swap()方法 进行兑换
+        - 将WETH转为ETH，Router将ETH转给用户
+      - swapETHForExactTokens(): 兑换：根据确切ETH，获取 Token
+        - 计算出需要多少个ETH
+        - 判断 如果计算出来的ETH数量大于用户能接受的最大数量，则交易失败。
+        - 将ETH转为WETH，将WEETH转给Pair合约
+        - 调用 Pair交易对中的 swap()方法 进行兑换
+        - 多余ETH返回给用户
+      - 兑换 支持收费的方法 和上面差不多，只不过多了一步收费的手续费。这里就不介绍了。想要了解可以看源代码
+      - 其他方法：quote、getAmountOut、getAmountsOut、getAmountIn、getAmountsIn。这些方法时提供给前端用的，用来计算能获得多少资产（确切输入能获得多少输出，或者确切输出能获得多少输入）。
+        - quote(): 给定数量的某个tokenA和该交易池储备对，返回等量的tokenB数量
+        - getAmountOut(): 给定输入Token的数量，计算输出Token的数量，
+        - getAmountsOut(): 给定输入Token的数量，计算输出Token的数量，支持多路径兑换
+        - getAmountIn(): 给定输出Token的数量，计算输入Token的数量
+        - getAmountsIn(): 给定输出Token的数量，计算输入Token的数量，支持多路径兑换
+
 

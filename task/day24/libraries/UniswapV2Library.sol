@@ -64,8 +64,8 @@ library UniswapV2Library {
         amountIn = (numerator / denominator).add(1);
     }
 
-    // 对任意数量的交易对执行链式getAmountOut计算  计算amount[0]付出量,amount[1]获得量
-    // 计算提供这些代币，能获得多少其他代币
+    // 对任意数量的交易对执行链式getAmountOut计算  
+    // 计算amounts，这里已知amounts[0]，所以从前往后计算。
     function getAmountsOut(address factory, uint amountIn, address[] memory path) internal view returns (uint[] memory amounts) {
         require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
         amounts = new uint[](path.length);
@@ -77,7 +77,7 @@ library UniswapV2Library {
     }
 
     // 对任意数量的交易对执行链式getAmountIn计算
-    // 对要获得指定数量的代币，计算需要多少另一个代币
+    // 计算amounts，这里已知amounts[amounts.length - 1]，所以从后往前计算。
     function getAmountsIn(address factory, uint amountOut, address[] memory path) internal view returns (uint[] memory amounts) {
         require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
         amounts = new uint[](path.length);

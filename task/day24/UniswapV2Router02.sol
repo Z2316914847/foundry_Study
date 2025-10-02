@@ -330,8 +330,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         );
     }
 
-    // 兑换
-    // 要求初始金额已经发送到第一对
+    // 兑换 ： 提取的公方法
     /**
      * @dev 根据path路径和其amounts量进行交易对兑换
      * @param amounts 在每对交易对进行输入的token的数量，对应path
@@ -367,6 +366,9 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         }
     }
 
+    // -------------------------下面两个方法都确切Token换Token--------------------------
+
+    // 兑换1（确切输入）：根据确切Token兑换Token。意思是：用户用 100usdt，计算能获得 x个 ETH，假如 合约计算出来的数量小于用户愿意接受的最低数量，那么交易失败。
     /**
      * @dev 根据确切的tokenA的数量兑换tokenB
      * @param amountIn 进行兑换的tokenA的数量
@@ -383,8 +385,16 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         address to,
         uint deadline
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
-        // 根据传入的tokenA的数量和path获得兑换后的amounts， amounts = ( amountIn * 997 *  reserveOut ) / ( reserveIn * 1000 + amountIn * 997 ) 
-        // amounts[0] = amountIn, amounts[1] = amountIn * 997 *  reserveOut / ( reserveIn * 1000 + amountIn * 997 )
+        // 探究这个方法中两个数组：path 和 amounts：
+        // Path数组：每个元素都是一个 token 代币地址。
+        //   假如用户想要用 usdt兑换 ETH，但是交易对没有 usdt->Doge 的交易对，但是有 usdt->ETH 和 ETH->Doge 的交易对。
+        //   那么path数组就是 [Addr_usdt, Addr_ETH, Addr_Doge]。同理，假如用户想要 usdt兑换 BTC，但是交易对没有 usdt->BTC 的交易对，但是有 usdt->Doge 和 Doge->ETH， ETH->BTC 的交易对。
+        //   那么path数组就是 [Addr_usdt, Addr_Doge, Addr_ETH, Addr_BTC]。
+        // Amounts数组：每个元素都是一个 代币数量。
+        //   假如用户想要用 100 usdt 兑换 Doge，那么amounts数组就是 [100, arg1, arg2]。arg1是ETH数量，arg2是Doge数量。
+        //   100是用户付出的usdt，arg1和arg2是合约计算出来的，100usdt 能兑换 arg1数量的ETH，然后 arg1个eth 能兑换 arg2数量的Doge。
+        // 注意：代币交易过程中，是会计算手续费的，收取规则997/1000。
+        // 注意：多路径的话，手续费会多次收取。
         amounts = UniswapV2Library.getAmountsOut(factory, amountIn, path);
         // 判断最终获得的tokenB的数量是否大于amountOutMin
         require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
@@ -399,6 +409,8 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         _swap(amounts, path, to);
     }
 
+    // 兑换1-1（确切输出）：用户需要确切个 Token数量:。意思是：用户需要 1ETH的话，愿意用 Max_Amounts个 usdt 兑换，
+    //   假如合约计算出来的数量大于 Max_Amounts，那么交易失败。
     /**
      * @dev 根据需要获得确切数量的tokenB传入需要tokenA的数量
      * @param amountOut 需要兑换后获得tokenB的数量
@@ -415,6 +427,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         address to,
         uint deadline
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
+        // 计算amounts，从后往前计算
         amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
         require(amounts[0] <= amountInMax, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
@@ -426,7 +439,9 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         _swap(amounts, path, to);
     }
 
-    // 根据确切数量的ETH的兑换token
+    // -------------------------下面两个方法都确切ETH换Token----------------------------
+
+    // 兑换2（确切输入）：根据确切数量的ETH的兑换token
     function swapExactETHForTokens(
         uint amountOutMin,
         address[] calldata path,
@@ -441,7 +456,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         _swap(amounts, path, to);
     }
 
-    // 根据需要获得确切数量的ETH传入需要token的数量
+    // 兑换2-2（确切输出）：根据需要获得确切数量的ETH 传入 需要token的数量
     function swapTokensForExactETH(
         uint amountOut,
         uint amountInMax,
@@ -463,7 +478,9 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);
     }
 
-    // 根据确切数量的token的兑换ETH
+    // -------------------------下面两个方法都确切Token换ETH----------------------------
+
+    // 兑换3（确切输入）：根据确切数量的token的兑换ETH
     // 获取期望的eth数量 -》 token转账 -》 然后进行兑换 -》获得 weth
     function swapExactTokensForETH(
         uint amountIn,  // 输入的token数量
@@ -483,10 +500,10 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         );
         _swap(amounts, path, address(this));  // 注意address(this)是当前合约地址，在pair合约中的swap方法中，他将weth转给router合约
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);  // 减少 weth
-        TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]);  // weth合约给用户转eth
+        TransferHelper.safeTransferETH(to, amounts[amounts.length - 1]); 
     }
 
-    // 根据需要获得确切数量的token传入需要ETH的数量
+    // 兑换3-3（确切输出）：根据需要获得确切数量的token传入需要ETH的数量
     function swapETHForExactTokens(
         uint amountOut,
         address[] calldata path,
@@ -496,12 +513,22 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         require(path[0] == WETH, 'UniswapV2Router: INVALID_PATH');
         amounts = UniswapV2Library.getAmountsIn(factory, amountOut, path);
         require(amounts[0] <= msg.value, 'UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
+        
         IWETH(WETH).deposit{value: amounts[0]}();
         assert(IWETH(WETH).transfer(UniswapV2Library.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
         // refund dust eth, if any
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
     }
+
+    // -------------------------下面方法支持转账手续费--------------------------------
+    //   确切输出的话，就不支持转账手续费。而确切输入的话，就支持转账手续费。
+    //     例如：市场价：(100usdt-1ETH)，现在用户想要 1ETH，用户最多能接受103Usdt。
+    //       假如确认输出 1ETH，合约计算需要输入103usdt。刚好用户可以接受，用户便将103usdt授权给Router合约。
+    //       Router将103转给Pair合约时 由于Token转账时要收费的，导致Pair合约只接收到了 103*0.95 = 97.85个usdt。
+    //       在执行swap函数时，导致交易失败（因为amount0In和amount1In必须有一个大于0）。
+    //       抛出这个异常：UniswapV2: INSUFFICIENT_INPUT_AMOUNT
+    // -----------------------------------------------------------------------------
 
     // 兑换（支持转账收费令牌）
     // 要求初始金额已经发送到第一对
@@ -529,7 +556,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         }
     }
 
-    // 根据确切的tokenA的数量兑换tokenB
+    // 兑换4（确切输入）：根据确切的tokenA的数量兑换tokenB
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
         uint amountIn,
         uint amountOutMin,
@@ -555,6 +582,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         );
     }
 
+    // 兑换4-1（确切输入）：根据确切的ETH的数量兑换tokenB
     function swapExactETHForTokensSupportingFeeOnTransferTokens(
         uint amountOutMin,
         address[] calldata path,
@@ -573,6 +601,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         );
     }
 
+    // 兑换4-2（确切输入）：根据确切的token的数量兑换ETH
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
         uint amountIn,
         uint amountOutMin,

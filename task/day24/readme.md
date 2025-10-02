@@ -195,82 +195,82 @@ uniswapV3改善V2不足
   - swapExactTokensForETHSupportingFeeOnTransferTokens(): 兑换：根据确切 token 兑换 ETH（支持 fee-to-transfer功能）。
 #### 详细介绍
   - addLiquidity(): TokenA-TokenB 流动性添加
-        - 部署 Pair交易对
-        - 计算出 两个代币数量
-          - 首次添加流动性(Pair交易对刚被部署)
-            - 试图返回 两个代币数量 == 期望数量（此时 Pair交易对是刚创建的，代币价格不会有波动，所以返回期望的数量即可）。
-          - 非首次添加流动性(Pair交易对已经存在，只不过再次添加流动性)
-            - 试图返回 两个代币数量（只不过这里要计算：有人会问，为什么要计算两个代币数量呢？我们直接使用 两个代币期望的数量 不就好了。 你错了，你应该考虑更多，在你添加流动时时，代币价格时时刻波动的，你的 两个代币数量期望值 只不过是某一时刻的价格。这样说理解了了吧。）
-              - 计算逻辑描述不出来，只能说：只可意会不可言传。自己看代码吧
-        - 转账（ transferFrom() ）两种token的amount数量到pair交易对合约，如果用户代币数量不足，则转账失败，抛出异常
-        - 调用 Pair交易对中的 mint()方法添加流动性
+    - 部署 Pair交易对
+    - 计算出 两个代币数量
+      - 首次添加流动性(Pair交易对刚被部署)
+        - 试图返回 两个代币数量 == 期望数量（此时 Pair交易对是刚创建的，代币价格不会有波动，所以返回期望的数量即可）。
+      - 非首次添加流动性(Pair交易对已经存在，只不过再次添加流动性)
+        - 试图返回 两个代币数量（只不过这里要计算：有人会问，为什么要计算两个代币数量呢？我们直接使用 两个代币期望的数量 不就好了。 你错了，你应该考虑更多，在你添加流动时时，代币价格时时刻波动的，你的 两个代币数量期望值 只不过是某一时刻的价格。这样说理解了了吧。）
+          - 计算逻辑描述不出来，只能说：只可意会不可言传。自己看代码吧
+    - 转账（ transferFrom() ）两种token的amount数量到pair交易对合约，如果用户代币数量不足，则转账失败，抛出异常
+    - 调用 Pair交易对中的 mint()方法添加流动性
   - addLiquidityETH(): TokenA-ETH 流动性添加
-        - 部署 Pair交易对( 注意：TokenA-WETH )
-        - 计算出 两个代币数量（基于原理同上）
-        - 转账（同上）
-          - 注意 ETH 不是ERc20代币，没有授权、TransferFrom功能，所以用户无法授权ETH给用户，只能转账给Router合约。
-          - 有人会问，为什么WETH中，为什么不给用户存款，然后用户通过授权将 WETH 授权给 Router合约。答：因为用户交易已经进到合约里了，我就问你，用户怎么在次去授权WETH给Router合约？你懂了吧。所以这样设计（WETH中直接给Router合于存款）是合理的
-        - 调用 Pair交易对中的 mint()方法添加流动性
+    - 部署 Pair交易对( 注意：TokenA-WETH )
+    - 计算出 两个代币数量（基于原理同上）
+    - 转账（同上）
+      - 注意 ETH 不是ERc20代币，没有授权、TransferFrom功能，所以用户无法授权ETH给用户，只能转账给Router合约。
+      - 有人会问，为什么WETH中，为什么不给用户存款，然后用户通过授权将 WETH 授权给 Router合约。答：因为用户交易已经进到合约里了，我就问你，用户怎么在次去授权WETH给Router合约？你懂了吧。所以这样设计（WETH中直接给Router合于存款）是合理的
+    - 调用 Pair交易对中的 mint()方法添加流动性
   - removeLiquidity(): TokenA-TokenB 流动性移除
-        - 获取 Pair交易对的地址
-        - 将流动性代币 LP Token 转给 Pair交易对合约
-        - 调用 Pair交易对中的 burn()方法 移除流动性
+    - 获取 Pair交易对的地址
+    - 将流动性代币 LP Token 转给 Pair交易对合约
+    - 调用 Pair交易对中的 burn()方法 移除流动性
   - removeLiquidityETH(): TokenA-ETH 流动性移除
-        - 调用removeLiquidity( ，WETH， ， ， ，address(this), )方法。注意参数不同
-        - 将两个代币数量 转给用户（是不是有疑问？这里为什么又要转代币给用户？因为调用调用removeLiquidity这个中to的地址是 Router合约地址）。
+    - 调用removeLiquidity( ，WETH， ， ， ，address(this), )方法。注意参数不同
+    - 将两个代币数量 转给用户（是不是有疑问？这里为什么又要转代币给用户？因为调用调用removeLiquidity这个中to的地址是 Router合约地址）。
   - removeLiquidityWithPermit(): TokenA-TokenB 流动性移除，增加 permit 功能
-        - 验证离线签名
-          - 将流动性代币 LP Token 转给 Pair交易对合约
-        - 调用 removeLiquidity()方法。
+    - 验证离线签名
+      - 将流动性代币 LP Token 转给 Pair交易对合约
+    - 调用 removeLiquidity()方法。
   - removeLiquidityETHWithPermit(): TokenA-ETH 流动性移除，增加 permit 功能
-        - 验证离线签名
-          - 将流动性代币 LP Token 转给 Pair交易对合约
-        - 调用 removeLiquidityETH()方法
+    - 验证离线签名
+      - 将流动性代币 LP Token 转给 Pair交易对合约
+    - 调用 removeLiquidityETH()方法
   - removeLiquidityETHSupportingFeeOnTransferTokens(): TokenA-ETH 流动性移除，增加 fee-to-transfer功能（有些代币在转账时会收取手续费）
-        - 调用removeLiquidity( ，WETH， ， ， ，address(this), )方法。注意参数不同
-        - 将两个代币数量 转给用户
+    - 调用removeLiquidity( ，WETH， ， ， ，address(this), )方法。注意参数不同
+    - 将两个代币数量 转给用户
   - removeLiquidityWithPermitSupportingFeeOnTransferTokens(): TokenA-TokenB 流动性移除，增加 fee-to-transfer功能 + permit 功能
-        - 验证离线签名
-          - 将流动性代币 LP Token 转给 Pair交易对合约
-        - 调用 removeLiquidityETHSupportingFeeOnTransferTokens()方法
+    - 验证离线签名
+      - 将流动性代币 LP Token 转给 Pair交易对合约
+    - 调用 removeLiquidityETHSupportingFeeOnTransferTokens()方法
   - swapExactTokensForTokens(): 兑换：根据确切Token，获取 Token
-        - 兑换这一些列方法，我们首先的明白参数的含义：
-          - amountIn: 用户想要兑换的Token数量
-          - amountOutMin: 用户期望的兑换Token数量最小值
-          - path: 兑换路径，即用户想要兑换的Token的地址顺序。这个Path是一个数组，在这个方法中，Path第一个元素是用户 付出token的地址，最后一个元素是用户想要兑换的token的地址。
-          - to: 兑换后代币的接收地址
-          - deadline: 兑换的截止时间
-        - 计算出能兑换的Token数量A
-          - (resever0+x)*(resever1+y)=resever0*resever1： 已知x，求y
-        - 判断兑换出的Token数量A是否大于用户能接受的最小数量
-        - 将用户代币 Token转给 Pair交易对合约
-        - 调用 Pair交易对中的 swap()方法 进行兑换
+    - 兑换这一些列方法，我们首先的明白参数的含义：
+      - amountIn: 用户想要兑换的Token数量
+      - amountOutMin: 用户期望的兑换Token数量最小值
+      - path: 兑换路径，即用户想要兑换的Token的地址顺序。这个Path是一个数组，在这个方法中，Path第一个元素是用户 付出token的地址，最后一个元素是用户想要兑换的token的地址。
+      - to: 兑换后代币的接收地址
+      - deadline: 兑换的截止时间
+    - 计算出能兑换的Token数量A
+      - (resever0+x)*(resever1+y)=resever0*resever1： 已知x，求y
+    - 判断兑换出的Token数量A是否大于用户能接受的最小数量
+    - 将用户代币 Token转给 Pair交易对合约
+    - 调用 Pair交易对中的 swap()方法 进行兑换
   - swapTokensForExactTokens(): 兑换: 获取确切TokenB数量，需要多少tokenA
-        - 计算出需要多少个TokenA
-        - 判断兑换出的Token数量A 是否 小于 用户能接受的最大数量（）如果小于的话，就交易成功，否则交易失败）。这里有人会问，如果合约计算出来的数量远远小于用户能接受的最大数量后，用户授权给Router合约的剩余代币怎么处理，答，这些代币Router合约是自己动用的，需要用户自己处理剩余的代币
-        - 将用户代币 Token转给 Pair交易对合约
-        - 调用 Pair交易对中的 swap()方法 进行兑换
+    - 计算出需要多少个TokenA
+    - 判断兑换出的Token数量A 是否 小于 用户能接受的最大数量（）如果小于的话，就交易成功，否则交易失败）。这里有人会问，如果合约计算出来的数量远远小于用户能接受的最大数量后，用户授权给Router合约的剩余代币怎么处理，答，这些代币Router合约是自己动用的，需要用户自己处理剩余的代币
+    - 将用户代币 Token转给 Pair交易对合约
+    - 调用 Pair交易对中的 swap()方法 进行兑换
   - swapExactETHForTokens(): 兑换：根据确切ETH，获取 Token
-        - 和swapExactTokensForTokens差不多，只不过swapExactETHForTokens这个方法多了一步：ETH转换为WETH，然后 WETH 转给 Pair交易地址。然后调用 Pair交易对中的 swap()方法 进行兑换
+    - 和swapExactTokensForTokens差不多，只不过swapExactETHForTokens这个方法多了一步：ETH转换为WETH，然后 WETH 转给 Pair交易地址。然后调用 Pair交易对中的 swap()方法 进行兑换
   - swapTokensForExactETH()：兑换：获取确切 ETH数量，需要多少tokenA
-        - 和swapTokensForExactTokens差不过，只不过swapTokensForExactETH这个方法多了一步：大概原因是：Pair将WETH转给Router合约了，然后router合约将WETH转换为ETH，然后Route合约r再将ETH转给用户
+    - 和swapTokensForExactTokens差不过，只不过swapTokensForExactETH这个方法多了一步：大概原因是：Pair将WETH转给Router合约了，然后router合约将WETH转换为ETH，然后Route合约r再将ETH转给用户
   - swapExactTokensForETH(): 兑换：根据确切Token，获取 ETH
-        - 计算出需要多少个TokenA
-        - 将用户代币 Token转给 Pair交易对合约
-        - 调用 Pair交易对中的 swap()方法 进行兑换
-        - 将WETH转为ETH，Router将ETH转给用户
+    - 计算出需要多少个TokenA
+    - 将用户代币 Token转给 Pair交易对合约
+    - 调用 Pair交易对中的 swap()方法 进行兑换
+    - 将WETH转为ETH，Router将ETH转给用户
   - swapETHForExactTokens(): 兑换：根据确切ETH，获取 Token
-        - 计算出需要多少个ETH
-        - 判断 如果计算出来的ETH数量大于用户能接受的最大数量，则交易失败。
-        - 将ETH转为WETH，将WEETH转给Pair合约
-        - 调用 Pair交易对中的 swap()方法 进行兑换
-        - 多余ETH返回给用户
-      - 兑换 支持收费的方法 和上面差不多，只不过多了一步收费的手续费。这里就不介绍了。想要了解可以看源代码。注意：其实吧，假如调用了 支持收费的方法，就说明用户已经有些了解：能获得的token肯定少于其他不支持收费的token，那么用户就会将滑点设大点。
+    - 计算出需要多少个ETH
+    - 判断 如果计算出来的ETH数量大于用户能接受的最大数量，则交易失败。
+    - 将ETH转为WETH，将WEETH转给Pair合约
+    - 调用 Pair交易对中的 swap()方法 进行兑换
+    - 多余ETH返回给用户
+  - 兑换 支持收费的方法 和上面差不多，只不过多了一步收费的手续费。这里就不介绍了。想要了解可以看源代码。注意：其实吧，假如调用了 支持收费的方法，就说明用户已经有些了解：能获得的token肯定少于其他不支持收费的token，那么用户就会将滑点设大点。
   - 其他方法：quote、getAmountOut、getAmountsOut、getAmountIn、getAmountsIn。这些方法时提供给前端用的，用来计算能获得多少资产（确切输入能获得多少输出，或者确切输出能获得多少输入）。
-        - quote(): 给定数量的某个tokenA和该交易池储备对，返回等量的tokenB数量
-        - getAmountOut(): 给定输入Token的数量，计算输出Token的数量，
-        - getAmountsOut(): 给定输入Token的数量，计算输出Token的数量，支持多路径兑换
-        - getAmountIn(): 给定输出Token的数量，计算输入Token的数量
-        - getAmountsIn(): 给定输出Token的数量，计算输入Token的数量，支持多路径兑换
+    - quote(): 给定数量的某个tokenA和该交易池储备对，返回等量的tokenB数量
+    - getAmountOut(): 给定输入Token的数量，计算输出Token的数量，
+    - getAmountsOut(): 给定输入Token的数量，计算输出Token的数量，支持多路径兑换
+    - getAmountIn(): 给定输出Token的数量，计算输入Token的数量
+    - getAmountsIn(): 给定输出Token的数量，计算输入Token的数量，支持多路径兑换
 
 

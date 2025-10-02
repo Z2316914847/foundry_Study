@@ -526,8 +526,10 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     //     例如：市场价：(100usdt-1ETH)，现在用户想要 1ETH，用户最多能接受103Usdt。
     //       假如确认输出 1ETH，合约计算需要输入103usdt。刚好用户可以接受，用户便将103usdt授权给Router合约。
     //       Router将103转给Pair合约时 由于Token转账时要收费的，导致Pair合约只接收到了 103*0.95 = 97.85个usdt。
-    //       在执行swap函数时，导致交易失败（因为amount0In和amount1In必须有一个大于0）。
-    //       抛出这个异常：UniswapV2: INSUFFICIENT_INPUT_AMOUNT
+    //       用户只能获得0.9785个ETH。现在的问题是：用户本来可以得到1ETH，现在只能获得0.9785个ETH。用户肯定不同意。
+    //       
+    //       如果开发者硬要写的确切输出的话，你可以参考swapExactTokensForTokensSupportingFeeOnTransferTokens这个方法：
+    //       这个方法是在兑换完成后，在进行判断：兑换后to地址的ETh的余额-to地址之前的ETH >= amountOutMin用户能接受的最低ETH数量
     // -----------------------------------------------------------------------------
 
     // 兑换（支持转账收费令牌）
@@ -622,6 +624,45 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         IWETH(WETH).withdraw(amountOut);
         TransferHelper.safeTransferETH(to, amountOut);
     }
+
+    // 兑换4-4 和 兑换4功能一样
+    // 超：实现的：因多跳产生的转账收费余额结算，避免因 手续费导致金额偏差
+    function swapExactTokensForTokensSupportingFeeOnTransferTokens_new(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external virtual ensure(deadline) returns (uint[] memory amounts) {
+        require(path.length >= 2, 'UniswapV2Library: INVALID_PATH');
+    
+        // 1. 记录转账前Pair的余额
+        address firstPair = UniswapV2Library.pairFor(factory, path[0], path[1]);
+        uint balanceBefore = IERC20(path[0]).balanceOf(firstPair);
+    
+        // 2. 转账用户指定的数量
+        TransferHelper.safeTransferFrom(
+            path[0],
+            msg.sender,
+            firstPair,
+            amountIn
+        );
+        
+        // 3. 计算实际到账数量（处理Fee-on-Transfer）
+        uint actualAmountIn = IERC20(path[0]).balanceOf(firstPair).sub(balanceBefore);
+        
+        // 4. 基于实际到账数量计算输出
+        amounts = UniswapV2Library.getAmountsOut(factory, actualAmountIn, path);
+        
+        // 5. 检查最小输出要求
+        require(amounts[amounts.length - 1] >= amountOutMin, 'UniswapV2Router: INSUFFICIENT_OUTPUT_AMOUNT');
+        
+        // 6. 执行交换
+        _swapSupportingFeeOnTransferTokens(path, to);
+    }
+
+
+    // -------------------------下面方法提供给前端用的-------------------------------
 
     // 库函数
     function quote(uint amountA, uint reserveA, uint reserveB) public pure virtual override returns (uint amountB) {

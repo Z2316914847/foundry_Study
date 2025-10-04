@@ -7,7 +7,7 @@
 ```solidity
 KekeSwap 是一个完整的去中心化交易所（DEX），目标用户是 DeFi 用户和流动性提供者。
 该项目包括 MEME token发射平台,AMM 自动做市商交易、多层次流动性挖矿、代币质押奖
-励和等模块功能，旨在为目标用户解决去中心化交易流动性不足、收益机制单一等问题，为用
+励等模块功能，旨在为目标用户解决去中心化交易流动性不足、收益机制单一等问题，为用
 户提供安全高效的 DeFi 交易和收益服务
 ```
 
@@ -22,7 +22,7 @@ KekeSwap 是一个完整的去中心化交易所（DEX），目标用户是 DeFi
 ##### 项目难点
 
 - 高性能AMM交易系统优化（技术挑战 : 传统 AMM 系统 Gas 消耗高，交易成本昂贵 解决方案 ）
-  - 确定性地址&预计算Pair：使用create2，以 keccak256(abi.encodepacked( token0_addr, token1_addr)) 作为 salt，部署部署 Pair，支持离线预测计算 Pair 地址与减少部署与首次交互开销。
+  - 确定性地址&预计算Pair：使用create2，以 keccak256(abi.encodepacked( token0_addr, token1_addr)) 作为 salt，部署 Pair，支持离线预测计算 Pair 地址与减少部署与首次交互开销。
     - 支持离线预测计算地址：预先知道地址
     - 减少部署开销(减少一次sload)：意思是：
       - 假设使用create部署合约：用户A部署Pair合约后，用户B进行交易/添加流动性，必须去factory调用getPair(TokenA,TokenB)，那马factory合约必须维护一个映射，那么后面用户在 Router 每次地址查询，都要执行一次额外的 Sload 操作，这就会消耗很多gas。

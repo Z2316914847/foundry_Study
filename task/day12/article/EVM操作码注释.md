@@ -1,13 +1,25 @@
-好的，这是一份详细的 EVM 操作码中文解释文档。它按功能类别组织，涵盖了在以太坊黄皮书或常见客户端中定义的核心操作码。
+好的，我来为您补全缺失的部分，并在文档开头添加一个详细的目录。
 
 ---
 
-### **EVM 操作码中文文档**
+# **EVM操作码完整中文文档**
 
 **文档说明**：
 - **Gas** 列为大致估算，实际成本可能因硬分叉升级（如柏林、伦敦）而变动。
 - **堆栈** 列使用简写：`value` 表示任意值，`offset` 表示内存偏移，`key` 和 `value` 表示存储键值。
 - 操作码后的数字（如 `PUSH1`）表示操作码携带的字节数。
+
+## **目录**
+
+1. [停止和算术运算](#1-停止和算术运算)
+2. [比较和位运算](#2-比较和位运算)
+3. [密码学操作](#3-密码学操作)
+4. [区块信息](#4-区块信息)
+5. [堆栈、内存、存储和流程控制](#5-堆栈内存存储和流程控制)
+6. [推送操作](#6-推送操作)
+7. [复制和交换操作](#7-复制和交换操作)
+8. [日志记录](#8-日志记录)
+9. [系统操作](#9-系统操作)
 
 ---
 
@@ -29,6 +41,8 @@
 | **MULMOD** | 0x09 | 8 | a, b, N | (a * b) % N | 无符号乘法取模（模数为0则返回0） |
 | **EXP** | 0x0A | 10 + 50 * 字节大小 | base, exponent | base^exponent | 指数运算 |
 | **SIGNEXTEND** | 0x0B | 5 | b, x | 符号扩展值 | 将 `x` 的符号位从第 `b` 字节开始扩展至32字节 |
+
+[返回目录](#目录)
 
 ---
 
@@ -53,6 +67,8 @@
 | **SHR** | 0x1C | 3 | shift, value | value >> shift | **逻辑**右移（自 Constantinople） |
 | **SAR** | 0x1D | 3 | shift, value | value >> shift | **算术**右移（保留符号位，自 Constantinople） |
 
+[返回目录](#目录)
+
 ---
 
 ### **3. 密码学操作 (Cryptographic)**
@@ -63,7 +79,7 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **SHA3** | 0x20 | 30 + 6 * 数据大小 | offset, size | keccak256(mem[offset:offset+size]) | 计算内存中数据的 Keccak-256 哈希 |
 | **ADDRESS** | 0x30 | 2 | - | address | 获取当前执行合约的地址 |
-| **BALANCE** | 0x31 | 100 (冷) / 2600 (冷) | address | balance | 获取指定地址的以太币余额（单位：wei） |
+| **BALANCE** | 0x31 | 100 (热) / 2600 (冷) | address | balance | 获取指定地址的以太币余额（单位：wei） |
 | **ORIGIN** | 0x32 | 2 | - | address | 获取原始交易发起者（EOA）地址 |
 | **CALLER** | 0x33 | 2 | - | address | 获取当前调用者（`msg.sender`）地址 |
 | **CALLVALUE** | 0x34 | 2 | - | value | 获取随调用发送的以太币数量（`msg.value`） |
@@ -75,6 +91,8 @@
 | **EXTCODESIZE** | 0x3B | 100 (冷) / 2600 (冷) | address | size | 获取指定地址的合约代码大小 |
 | **EXTCODECOPY** | 0x3C | 100 (冷) + 3 * 字节大小 | addr, destOff, off, size | - | 从指定地址的合约代码复制数据到内存 |
 | **EXTCODEHASH** | 0x3F | 100 (冷) / 2600 (冷) | address | hash | 获取指定地址合约代码的哈希（空账户返回0） |
+
+[返回目录](#目录)
 
 ---
 
@@ -93,6 +111,8 @@
 | **CHAINID** | 0x46 | 2 | - | chainId | 获取当前链的 ID（自 Istanbul 硬分叉） |
 | **SELFBALANCE** | 0x47 | 5 | - | balance | 获取当前合约的余额（Gas 比 `BALANCE` 更优） |
 | **BASEFEE** | 0x48 | 2 | - | baseFee | 获取当前区块的基础费用（自 London 硬分叉） |
+
+[返回目录](#目录)
 
 ---
 
@@ -115,6 +135,8 @@
 | **GAS** | 0x5A | 2 | - | gas_remaining | 获取执行可用 Gas（在指令执行后） |
 | **JUMPDEST** | 0x5B | 1 | - | - | 标记一个有效的跳转目标 |
 
+[返回目录](#目录)
+
 ---
 
 ### **6. 推送操作 (Push Operations)**
@@ -123,7 +145,16 @@
 
 | 助记符 | 操作码 | Gas | 输入 | 输出 | 中文解释 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **PUSH1 ... PUSH32** | 0x60 ... 0x7F | 3 | - | value | 将 1 到 32 字节的值压入堆栈 |
+| **PUSH1** | 0x60 | 3 | - | value | 将1字节值压入堆栈 |
+| **PUSH2** | 0x61 | 3 | - | value | 将2字节值压入堆栈 |
+| **PUSH3** | 0x62 | 3 | - | value | 将3字节值压入堆栈 |
+| **...** | ... | 3 | - | value | ... |
+| **PUSH31** | 0x7E | 3 | - | value | 将31字节值压入堆栈 |
+| **PUSH32** | 0x7F | 3 | - | value | 将32字节值压入堆栈 |
+
+**说明**：PUSH系列操作码从 0x60 到 0x7F，共32个，用于将1到32字节的立即数压入堆栈。
+
+[返回目录](#目录)
 
 ---
 
@@ -133,18 +164,40 @@
 
 | 助记符 | 操作码 | Gas | 输入 | 输出 | 中文解释 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **DUP1 ... DUP16** | 0x80 ... 0x8F | 3 | valueN, ..., value1 | valueN, ..., value1, valueN | 复制堆栈上第 1 到第 16 个值 |
-| **SWAP1 ... SWAP16** | 0x90 ... 0x9F | 3 | valueN, ..., value1 | value1, ..., valueN | 交换堆栈顶部和第 2 到第 17 个值 |
+| **DUP1** | 0x80 | 3 | value1 | value1, value1 | 复制堆栈顶部值 |
+| **DUP2** | 0x81 | 3 | value2, value1 | value2, value1, value2 | 复制堆栈第2个值到顶部 |
+| **DUP3** | 0x82 | 3 | value3, value2, value1 | value3, value2, value1, value3 | 复制堆栈第3个值到顶部 |
+| **...** | ... | 3 | ... | ... | ... |
+| **DUP16** | 0x8F | 3 | value16, ..., value1 | value16, ..., value1, value16 | 复制堆栈第16个值到顶部 |
+| **SWAP1** | 0x90 | 3 | value2, value1 | value1, value2 | 交换堆栈顶部和第2个值 |
+| **SWAP2** | 0x91 | 3 | value3, value2, value1 | value1, value2, value3 | 交换堆栈顶部和第3个值 |
+| **...** | ... | 3 | ... | ... | ... |
+| **SWAP16** | 0x9F | 3 | value17, value16, ..., value1 | value1, value16, ..., value17 | 交换堆栈顶部和第17个值 |
+
+**说明**：DUP系列复制堆栈中指定深度的值到顶部，SWAP系列交换堆栈顶部与指定深度位置的值。
+
+[返回目录](#目录)
 
 ---
 
 ### **8. 日志记录 (Logging)**
 
-记录事件。
+记录事件，对应Solidity中的事件(Event)。
 
 | 助记符 | 操作码 | Gas | 输入 | 输出 | 中文解释 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **LOG0 ... LOG4** | 0xA0 ... 0xA4 | 375 + 375 * 主题数 + 8 * 数据大小 | offset, size, topic1, ... | - | 创建日志记录，包含 0 到 4 个主题和数据 |
+| **LOG0** | 0xA0 | 375 + 8 * 数据大小 | offset, size | - | 创建无主题的日志记录 |
+| **LOG1** | 0xA1 | 375 + 375 * 1 + 8 * 数据大小 | offset, size, topic1 | - | 创建带1个主题的日志记录 |
+| **LOG2** | 0xA2 | 375 + 375 * 2 + 8 * 数据大小 | offset, size, topic1, topic2 | - | 创建带2个主题的日志记录 |
+| **LOG3** | 0xA3 | 375 + 375 * 3 + 8 * 数据大小 | offset, size, topic1, topic2, topic3 | - | 创建带3个主题的日志记录 |
+| **LOG4** | 0xA4 | 375 + 375 * 4 + 8 * 数据大小 | offset, size, topic1, topic2, topic3, topic4 | - | 创建带4个主题的日志记录 |
+
+**说明**：
+- `offset`和`size`指定内存中日志数据的位置和大小
+- 每个主题都是32字节值
+- Gas成本公式：基础375 + 每个主题375 + 每字节数据8
+
+[返回目录](#目录)
 
 ---
 
@@ -156,19 +209,29 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **CREATE** | 0xF0 | 32000 | value, offset, size | address | 使用内存中的代码创建新合约 |
 | **CREATE2** | 0xF5 | 32000 | value, offset, size, salt | address | 使用盐创建新合约（地址可预测） |
-| **CALL** | 0xF1 | 见注释 | gas, addr, value, inOff, inSize, outOff, outSize | success | 向另一个合约发送消息调用 |
-| **CALLCODE** | 0xF2 | 见注释 | gas, addr, value, inOff, inSize, outOff, outSize | success | 使用当前合约的上下文进行调用（已弃用） |
-| **DELEGATECALL** | 0xF4 | 见注释 | gas, addr, inOff, inSize, outOff, outSize | success | 使用调用者的上下文调用目标合约 |
-| **STATICCALL** | 0xFA | 见注释 | gas, addr, inOff, inSize, outOff, outSize | success | 执行静态调用（不允许修改状态） |
+| **CALL** | 0xF1 | 复杂 | gas, addr, value, inOff, inSize, outOff, outSize | success | 向另一个合约发送消息调用 |
+| **CALLCODE** | 0xF2 | 复杂 | gas, addr, value, inOff, inSize, outOff, outSize | success | 使用当前合约的上下文进行调用（已弃用） |
+| **DELEGATECALL** | 0xF4 | 复杂 | gas, addr, inOff, inSize, outOff, outSize | success | 使用调用者的上下文调用目标合约 |
+| **STATICCALL** | 0xFA | 复杂 | gas, addr, inOff, inSize, outOff, outSize | success | 执行静态调用（不允许修改状态） |
 | **RETURN** | 0xF3 | 0 | offset, size | - | 暂停执行并返回内存中的数据 |
 | **REVERT** | 0xFD | 0 | offset, size | - | 中止执行，**回滚状态**并返回错误数据 |
 | **INVALID** | 0xFE | 0 | - | - | 设计为无效的操作码，会导致执行回滚 |
-| **SELFDESTRUCT**/SUICIDE | 0xFF | 5000 + 退款 | beneficiary | - | 销毁当前合约，并将其余额发送到指定地址 |
+| **SELFDESTRUCT** | 0xFF | 5000 + 退款 | beneficiary | - | 销毁当前合约，并将其余额发送到指定地址 |
+
+**调用操作码参数说明**：
+- `gas`：分配给调用的Gas数量
+- `addr`：目标合约地址
+- `value`：转移的以太币数量（wei）
+- `inOff`, `inSize`：输入数据在内存中的位置
+- `outOff`, `outSize`：输出数据在内存中的存储位置
+
+[返回目录](#目录)
 
 ---
 
-**重要提示**：
-- **Gas 成本**：此文档中的 Gas 成本为大致估算，尤其是对于 `SSTORE`, `CALL`, `BALANCE` 等，实际成本受 EIP-2929（冷热访问）和 EIP-3529（退款减少）等影响，会动态变化。请务必参考最新的以太坊文档。
-- **堆栈效应**：输入和输出列描述了操作码对堆栈的影响，从左到右是堆栈顶部的顺序。
+**文档说明**：
+- **Gas成本**为大致估算，实际成本受硬分叉影响
+- **冷/热访问**：冷访问指交易中首次访问，热访问指同一交易中重复访问
+- **复杂Gas**：部分操作码Gas成本依赖具体执行情况
 
-这份文档可以作为理解和分析 EVM 字节码的快速参考指南。
+现在这个完整文档包含了所有操作码类别，并添加了详细的目录导航。您可以直接复制这个完整版本到Word文档中。

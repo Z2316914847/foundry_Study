@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 // import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./ownerERC20Permit.sol";
-import "./ownerNFT.sol";
+import "./ownerNFT.sol";           // 这个合约中有IERC721接口
 import "./WhitelistManager.sol";
 import { console } from "forge-std/Test.sol";
 
@@ -16,6 +16,10 @@ contract NFTMarket{
     // }
     ownerERC20Permit public myToken;
     WhitelistManager public whitelistManager;
+
+    // NFT合约 白名单
+
+    // NFT合约 黑名单
 
     constructor(address _myToken, address _whitelistManager) {
         myToken = ownerERC20Permit(_myToken);
@@ -41,6 +45,9 @@ contract NFTMarket{
     // 参数：nftContract是NFT合约地址(根据NFT特有地址，调用NFT合约中的方法)， tokenId：NFT唯一标识， price：设置NFT上架价格
     function list(address nftContract, uint256 tokenId, uint256 price) public {
         IERC721 nft = IERC721(nftContract);
+        
+        // 这里可以增加一个功能：只有白名单的NFT合约中的NFT才能上架 
+
         // 其实获得NFT授权的所有人，也可以上架NFT，但是这里为了简化，只允许NFT所有者可以上架NFT
         require(nft.ownerOf(tokenId) == msg.sender, "Not NFT owner");
         require(price > 0, "Price must be > 0");
@@ -138,10 +145,22 @@ contract NFTMarket{
         require(listing.seller == msg.sender, "Not seller");
 
         IERC721(nftContract).transferFrom(address(this), msg.sender, tokenId);
-        delete listings[nftContract][tokenId];
+        delete listings[nftContract][tokenId];   // 这行代码会将 listings[nftContract][tokenId] 的值重置为默认值。并且mapping中的value存储槽也会被释放
 
         emit Canceled(nftContract, tokenId);
     }
+
+    // 这里可以增加一个功能：管理员 验证某个 NFT 合约是否支持ERC721接口
+
+    // 这里可以增加一个功能：管理员 将某个 NFT 合约加入白名单
+
+    // 这里可以增加一个功能：管理员 将某个 NFT 合约假如黑名单
+
+    // 这里可以增加一个功能：管理员 将某个 NFT 合约 移除 白名单
+
+    // 这里可以增加一个功能：管理员 将某个 NFT 合约 移除 黑名单
+
+    
 
     // 实现tokensReceived接口，处理通过transferWithCallback接收到的代币
     // function tokensReceived(address from, uint256 amount, bytes calldata data) public returns (bool) {

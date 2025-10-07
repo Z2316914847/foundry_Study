@@ -135,7 +135,8 @@ contract ownerERC20Permit is IERC20Permit{
         // 第二次hash：完整 EIP-712 哈希。 将 structHash 和 ​EIP-712 域信息（Domain Separator）​​ 组合，生成最终的 ​符合 EIP-712 标准的哈希。这个哈希才是真正用于 ​签名验证​ 的数据
         bytes32 hash = keccak256(abi.encodePacked("\x19\x01", _DOMAIN_SEPARATOR, structHash));
 
-        // ecrecover 是 Solidity 的内置函数，用于从 ​ECDSA 签名(v, r, s)​ 和 ​消息哈希​ 中恢复出签名者的以太坊地址。其底层逻辑基于 ​椭圆曲线数字签名算法（ECDSA）
+        // ecrecover 是 Solidity 的内置函数，直接使用内置的 errecover函数前提是，获得的 r、s、v要符合要求。如果签名不符合要求，直接使用内置errecover会造成漏洞。
+        //   所以推荐使用 Openzeppelin的 ECDSA.sol合约。这个合约内置 检查签名是否符合要求，如果签名符合要求的话，才会调用 内置函数 ecrecover 。
         // 具体ecrecover代码逻辑可以自己查看资料
         address signer = ecrecover(hash, v, r, s);
 

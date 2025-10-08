@@ -133,6 +133,7 @@ contract ownerERC20Permit is IERC20Permit{
         bytes32 structHash = keccak256(abi.encode( _PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline));
 
         // 第二次hash：完整 EIP-712 哈希。 将 structHash 和 ​EIP-712 域信息（Domain Separator）​​ 组合，生成最终的 ​符合 EIP-712 标准的哈希。这个哈希才是真正用于 ​签名验证​ 的数据
+        // 这里为什么不适用encode，因为行业标准是用endocePacked，前端签名就是用encodePacked，后端也必须一致。懂？
         bytes32 hash = keccak256(abi.encodePacked("\x19\x01", _DOMAIN_SEPARATOR, structHash));
 
         // ecrecover 是 Solidity 的内置函数，直接使用内置的 errecover函数前提是，获得的 r、s、v要符合要求。如果签名不符合要求，直接使用内置errecover会造成漏洞。

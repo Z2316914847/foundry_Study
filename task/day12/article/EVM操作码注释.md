@@ -80,7 +80,7 @@
 
 | 助记符 | 操作码 | Gas | 输入 | 输出 | 中文解释 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **SHA3** | 0x20 | 30 + 6 * 数据大小 | offset, size | keccak256(mem[offset:offset+size]) | 计算内存中数据的 Keccak-256 哈希 |
+| **Keccak256** | 0x20 | 30 + 6 * 数据大小 ++ memory_expansion_cost | offset, size | keccak256(mem[offset:offset+size]) | 计算内存中数据的 Keccak-256 哈希 |
 | **ADDRESS** | 0x30 | 2 | - | address | 获取当前执行合约的地址 |
 | **BALANCE** | 0x31 | 100 (热) / 2600 (冷) | address | balance | 获取指定地址的以太币余额（单位：wei） |
 | **ORIGIN** | 0x32 | 2 | - | address | 获取原始交易发起者（EOA）地址 |
@@ -91,6 +91,7 @@
 | **CALLDATACOPY** | 0x37 | 3 + 3 * 字节大小 | destOffset, offset, size | - | 从 `calldata` 复制数据到内存 |
 | **CODESIZE** | 0x38 | 2 | - | size | 获取当前合约代码的大小 |
 | **CODECOPY** | 0x39 | 3 + 3 * 字节大小 | destOffset, offset, size | - | 从当前合约代码复制数据到内存 |
+| **GASPRICE** | 0x3A | 2 | - | gasPrice | 获取当前区块的 Gas 价格 |
 | **EXTCODESIZE** | 0x3B | 100 (冷) / 2600 (冷) | address | size | 获取指定地址的合约代码大小 |
 | **EXTCODECOPY** | 0x3C | 100 (冷) + 3 * 字节大小 | addr, destOff, off, size | - | 从指定地址的合约代码复制数据到内存 |
 | **EXTCODEHASH** | 0x3F | 100 (冷) / 2600 (冷) | address | hash | 获取指定地址合约代码的哈希（空账户返回0） |
@@ -126,17 +127,20 @@
 | 助记符 | 操作码 | Gas | 输入 | 输出 | 中文解释 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **POP** | 0x50 | 2 | value | - | 从堆栈弹出一个值 |
-| **MLOAD** | 0x51 | 3 | offset | value | 从内存加载32字节到堆栈 |
-| **MSTORE** | 0x52 | 3 | offset, value | - | 将32字节值存储到内存 |
-| **MSTORE8** | 0x53 | 3 | offset, value | - | 将1个字节存储到内存 |
+| **MLOAD** | 0x51 | 3 + memory_expansion_cost | offset | value | 从内存加载32字节到堆栈 |
+| **MSTORE** | 0x52 | 3 + memory_expansion_cost | offset, value | - | 将32字节值存储到内存 |
+| **MSTORE8** | 0x53 | 3 + memory_expansion_cost | offset, value | - | 将1个字节存储到内存 |
 | **SLOAD** | 0x54 | 100 (热) / 2100 (冷) | key | value | 从存储加载值 |
-| **SSTORE** | 0x55 | 见注释 | key, value | - | 将值存储到存储（Gas 成本复杂，取决于修改） |
+| **SSTORE** | 0x55 | 其他都为100，只有current_value==origin_calue时gas消耗（20000/2900） | key, value | - | 将值存储到存储（Gas 成本复杂，取决于修改） |
 | **JUMP** | 0x56 | 8 | counter | - | 跳转到程序计数器 |
 | **JUMPI** | 0x57 | 10 | counter, condition | - | 条件跳转（`condition != 0` 时跳转） |
 | **PC** | 0x58 | 2 | - | counter | 获取当前程序计数器 |
 | **MSIZE** | 0x59 | 2 | - | size | 获取当前内存的大小（字节） |
 | **GAS** | 0x5A | 2 | - | gas_remaining | 获取执行可用 Gas（在指令执行后） |
 | **JUMPDEST** | 0x5B | 1 | - | - | 标记一个有效的跳转目标 |
+| **TLOAD** | 0x5C | 100 | key | value | 从临时存储中加载字 |
+| **TSTORE** | 0x5D | 100 | key, value | - | 将单词保存到临时存储器 |
+| **MCOPY** | 0x5E | 3，3 * words_copied + memory_expansion_cost  | destOffset，offset，size | - | 复制内存区域 |
 
 [返回目录](#目录)
 
@@ -148,6 +152,7 @@
 
 | 助记符 | 操作码 | Gas | 输入 | 输出 | 中文解释 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **PUSH0** | 0x60 | 2 | - | value | 将值 0 放入堆栈 |
 | **PUSH1** | 0x60 | 3 | - | value | 将1字节值压入堆栈 |
 | **PUSH2** | 0x61 | 3 | - | value | 将2字节值压入堆栈 |
 | **PUSH3** | 0x62 | 3 | - | value | 将3字节值压入堆栈 |
@@ -210,8 +215,8 @@
 
 | 助记符 | 操作码 | Gas | 输入 | 输出 | 中文解释 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **CREATE** | 0xF0 | 32000 | value, offset, size | address | 使用内存中的代码创建新合约 |
-| **CREATE2** | 0xF5 | 32000 | value, offset, size, salt | address | 使用盐创建新合约（地址可预测） |
+| **CREATE** | 0xF0 | 32000，dynamic_gas = init_code_cost + memory_expansion_cost + deployment_code_execution_cost + code_deposit_cost | value, offset, size | address | 使用内存中的代码创建新合约 |
+| **CREATE2** | 0xF5 | 32000，dynamic_gas = init_code_cost + memory_expansion_cost + deployment_code_execution_cost + code_deposit_cost | value, offset, size, salt | address | 使用盐创建新合约（地址可预测） |
 | **CALL** | 0xF1 | 复杂 | gas, addr, value, inOff, inSize, outOff, outSize | success | 向另一个合约发送消息调用 |
 | **CALLCODE** | 0xF2 | 复杂 | gas, addr, value, inOff, inSize, outOff, outSize | success | 使用当前合约的上下文进行调用（已弃用） |
 | **DELEGATECALL** | 0xF4 | 复杂 | gas, addr, inOff, inSize, outOff, outSize | success | 使用调用者的上下文调用目标合约 |
